@@ -2,6 +2,7 @@
 
 import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import BillBoard from "@/components/BillBoard";
 
 type Player = {
   name: string;
@@ -39,48 +40,108 @@ export default function GamePage() {
 
   const players = lobby?.players ?? [];
   const round = lobby?.round ?? 1;
-  const phase = lobby?.phase ?? "waiting";
+  const phase = lobby?.phase ?? "playing";
 
-  const currentPlayer = players.find((p) => p.name === name);
+  const currentPlayer = players.find((p) => p.name === (name ?? ""));
+
+  // placeholder progress values (connect to game logic later)
+  const activistProgress = 0;
+  const lobbyistProgress = 0;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-200 via-blue-200 to-slate-300">
+    <div className="min-h-screen bg-gradient-to-b from-slate-200 via-slate-100 to-slate-200 flex flex-col items-center p-8 text-gray-900">
 
-      <div className="bg-white/40 backdrop-blur-md p-10 rounded-xl shadow-xl w-[500px] text-black">
-
-        <h1 className="text-4xl font-bold text-center mb-6">
-          Game Started
+      {/* HEADER */}
+      <div className="text-center mb-8">
+        <h1 className="text-5xl font-extrabold tracking-wide">
+          Climate Accord
         </h1>
 
-        <p className="text-xl text-center mb-2">
+        <p className="text-lg mt-2">
           Lobby Code: <b>{code}</b>
         </p>
 
-        <p className="text-lg text-center mb-2">
+        <p className="text-md">
           Round {round} • Phase: {phase}
         </p>
 
         {currentPlayer?.role && (
-          <p className="text-center text-xl mb-6 font-bold">
-            Your Role: {currentPlayer.role === "lobbyist"
-              ? "Industrial Lobbyist"
-              : "Climate Advocate"}
+          <p className="mt-3 text-xl font-semibold">
+            Your Role:{" "}
+            {currentPlayer.role === "lobbyist"
+              ? "Industrial Lobbyist 🏭"
+              : "Climate Advocate 🌱"}
           </p>
         )}
+      </div>
 
-        <h2 className="text-2xl mb-3">Players</h2>
+      {/* BOARD */}
+      <div className="w-full max-w-6xl space-y-8">
 
-        <ul className="mb-6">
-          {players.map((player) => (
-            <li key={player.name}>
-              {player.name} — Score: {player.score}
-            </li>
-          ))}
-        </ul>
+        {/* LOBBYIST TRACK */}
+        {currentPlayer?.role === "lobbyist" && (
+          <div className="bg-gradient-to-r from-red-500 to-red-400 p-6 rounded-2xl shadow-lg">
 
-        <p className="text-center text-lg">
-          Game logic coming next...
-        </p>
+            <h2 className="text-2xl font-bold text-center text-white mb-5">
+              Lobbyist Policy Track • Points: {lobbyistProgress}/6
+            </h2>
+
+            <div className="flex justify-center gap-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="w-24 h-32 bg-white rounded-lg border-4 border-red-700 flex items-center justify-center text-xs text-gray-500 shadow-md"
+                >
+                  place card
+                </div>
+              ))}
+            </div>
+
+          </div>
+        )}
+
+        {/* BILL AREA */}
+        <BillBoard role={currentPlayer?.role} />
+
+        {/* ACTIVIST TRACK */}
+        <div className="bg-gradient-to-r from-green-500 to-green-400 p-6 rounded-2xl shadow-lg">
+
+          <h2 className="text-2xl font-bold text-center text-white mb-5">
+            Activist Policy Track • Points: {activistProgress}/5
+          </h2>
+
+          <div className="flex justify-center gap-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="w-24 h-32 bg-white rounded-lg border-4 border-green-700 flex items-center justify-center text-xs text-gray-500 shadow-md"
+              >
+                place card
+              </div>
+            ))}
+          </div>
+
+        </div>
+
+        {/* PLAYERS */}
+        <div className="bg-slate-200 p-4 rounded-xl shadow">
+
+          <h2 className="text-xl font-bold mb-3">
+            Players
+          </h2>
+
+          <div className="flex flex-wrap gap-3 justify-center">
+            {players.map((p) => (
+              <div
+                key={p.name}
+                className="bg-white px-4 py-2 rounded-lg shadow font-medium"
+              >
+                {p.name}
+              </div>
+            ))}
+          </div>
+
+        </div>
 
       </div>
 
