@@ -6,8 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "dev:server": "nodemon --watch server --exec ts-node server/server.ts"
+    "lint": "next lint",
+    "dev:server": "nodemon --watch server --exec tsx server/server.ts"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
@@ -34,6 +34,7 @@
     "nodemon": "^3.1.14",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
