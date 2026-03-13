@@ -1,67 +1,98 @@
 "use client";
 
+
 import { useState } from "react";
+
+
 import { useRouter } from "next/navigation";
 
 export default function JoinLobby() {
 
   const router = useRouter();
 
+
+  // State variable for storing the player's entered name
   const [playerName, setPlayerName] = useState("");
+
+  // State variable for storing the lobby code entered by the user
   const [lobbyCode, setLobbyCode] = useState("");
 
+  // Function executed when the user presses the "Join Game" button
   function joinLobby() {
 
+    // Validate that both fields have been filled in
     if (!playerName || !lobbyCode) {
       alert("Please enter your name and lobby code");
       return;
     }
 
+    // Redirect the player to the lobby page
+    // The lobby code becomes part of the route and the player name is passed as a query parameter
     router.push(`/lobby/${lobbyCode.toUpperCase()}?name=${playerName}`);
   }
 
   return (
+
+    // Main container that centers the lobby join form on the page
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-200 via-blue-200 to-slate-300">
 
+      {/* Lobby join card */}
       <div className="bg-white/40 backdrop-blur-md p-10 rounded-xl shadow-xl w-[450px]">
 
+        {/* Page title */}
         <h1 className="text-4xl font-bold text-center text-green-900 mb-6">
           JOIN LOBBY
         </h1>
 
-        {/* Player Name */}
+        {/* Player Name Input Section */}
         <div className="mb-6">
+
+          {/* Label for player name input */}
           <label className="block text-lg font-semibold text-black mb-2">
             Player Name
           </label>
 
+          {/* Input field where the player enters their name */}
           <input
             type="text"
             placeholder="Enter your name"
             value={playerName}
+            // Controlled input linked to playerName state
+
             onChange={(e) => setPlayerName(e.target.value)}
+            // Updates playerName state when the user types
+
             className="w-full p-3 rounded-lg border border-gray-400 text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-700"
           />
         </div>
 
-        {/* Lobby Code */}
+        {/* Lobby Code Input Section */}
         <div className="mb-8">
+
+          {/* Label for lobby code input */}
           <label className="block text-lg font-semibold text-black mb-2">
             Lobby Code
           </label>
 
+          {/* Input field for entering the lobby code */}
           <input
             type="text"
             placeholder="Enter lobby code"
             value={lobbyCode}
+            // Controlled input linked to lobbyCode state
+
             onChange={(e) => setLobbyCode(e.target.value)}
+            // Updates lobbyCode state when the user types
+
             className="w-full p-3 rounded-lg border border-gray-400 text-black uppercase placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-700"
           />
         </div>
 
-        {/* Join Button */}
+        {/* Button used to attempt joining the lobby */}
         <button
           onClick={joinLobby}
+          // Calls joinLobby function when clicked
+
           className="w-full bg-blue-700 text-white text-xl font-bold py-4 rounded-lg border-4 border-blue-900 hover:bg-blue-800 hover:scale-105 transition-all"
         >
           JOIN GAME
