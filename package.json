@@ -10,9 +10,11 @@
     "dev:server": "nodemon --watch server --exec ts-node server/server.ts"
   },
   "dependencies": {
+    "@gsap/react": "^2.1.2",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "gsap": "^3.14.2",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
