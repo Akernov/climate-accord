@@ -23,7 +23,7 @@ export default function BillBoard({ role }: BillBoardProps) {
   return (
 
     // Main container for the bill display board
-    <div className="bg-white p-8 rounded-2xl shadow-xl text-center border-4 border-gray-300">
+    <div className="bg-gray-900 p-8 rounded-2xl shadow-xl text-center border-4 border-gray-700 text-white">
 
       {/* Section title */}
       <h2 className="text-2xl font-bold mb-6">
@@ -37,23 +37,23 @@ export default function BillBoard({ role }: BillBoardProps) {
         {displayedBills.map((bill, i) => (
           <div
             key={i}
-            className="w-64 bg-blue-100 border-4 border-blue-500 rounded-xl p-5 shadow-lg"
+            className="w-64 bg-gray-800 border-4 border-blue-600 rounded-xl p-5 shadow-lg"
           >
 
             {/* Bill title */}
-            <h3 className="text-lg font-bold mb-4">
+            <h3 className="text-lg font-bold mb-4 text-white">
               {bill.title}
             </h3>
 
             {/* Advocate score impact (visible to all players) */}
-            <p className="text-green-700 font-semibold">
+            <p className="text-green-400 font-semibold">
                Advocate: +{bill.advocate}
             </p>
 
             {/* Lobbyist score impact
                 Hidden from advocates to preserve hidden role mechanics */}
             {role === "lobbyist" ? (
-              <p className="text-red-700 font-semibold">
+              <p className="text-red-400 font-semibold">
                  Lobbyist: {bill.lobbyist}
               </p>
             ) : (

@@ -52,8 +52,8 @@ export default function GamePage() {
   // Prevent rendering the board until we have the data from the server
   if (!lobby) {
     return (
-      <div className="min-h-screen bg-slate-200 flex items-center justify-center">
-        <p className="text-2xl font-bold">Loading game board...</p>
+      <div className="relative min-h-screen mx-auto flex flex-col bg-black overflow-hidden items-center justify-center">
+        <p className="text-2xl font-bold text-gray-300">Loading game board...</p>
       </div>
     );
   }
@@ -68,13 +68,14 @@ export default function GamePage() {
   const lobbyistProgress = 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-200 via-slate-100 to-slate-200 flex flex-col items-center p-8 text-gray-900">
+    <div className="relative min-h-screen mx-auto flex flex-col bg-black overflow-hidden items-center p-8 text-gray-300">
       
       {/* GAME HEADER */}
       <div className="text-center mb-8">
-        <h1 className="text-5xl font-extrabold tracking-wide">
-          Climate Accord
+        <h1 className="text-5xl font-extrabold tracking-wide text-gray-400/90">
+        Climate Accord
         </h1>
+ 
         
         <p className="text-lg mt-2">
           Lobby Code: <b>{code}</b>
@@ -99,7 +100,7 @@ export default function GamePage() {
         
         {/* LOBBYIST POLICY TRACK */}
         {currentPlayer?.role === "lobbyist" && (
-          <div className="bg-gradient-to-r from-red-500 to-red-400 p-6 rounded-2xl shadow-lg">
+          <div className="bg-gradient-to-r from-red-700 to-red-600 p-6 rounded-2xl shadow-lg">
             <h2 className="text-2xl font-bold text-center text-white mb-5">
               Lobbyist Policy Track • Points: {lobbyistProgress}/6
             </h2>
@@ -107,7 +108,7 @@ export default function GamePage() {
               {Array.from({ length: 5 }).map((_, i) => (
                 <div
                   key={i}
-                  className="w-24 h-32 bg-white rounded-lg border-4 border-red-700 flex items-center justify-center text-xs text-gray-500 shadow-md"
+                  className="w-24 h-32 bg-gray-800 rounded-lg border-4 border-red-800 flex items-center justify-center text-xs text-gray-400 shadow-md"
                 >
                   place card
                 </div>
@@ -119,7 +120,7 @@ export default function GamePage() {
         <BillBoard role={currentPlayer?.role} />
 
         {/* ACTIVIST POLICY TRACK */}
-        <div className="bg-gradient-to-r from-green-500 to-green-400 p-6 rounded-2xl shadow-lg">
+        <div className="bg-gradient-to-r from-green-700 to-green-600 p-6 rounded-2xl shadow-lg">
           <h2 className="text-2xl font-bold text-center text-white mb-5">
             Activist Policy Track • Points: {activistProgress}/5
           </h2>
@@ -127,7 +128,7 @@ export default function GamePage() {
             {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={i}
-                className="w-24 h-32 bg-white rounded-lg border-4 border-green-700 flex items-center justify-center text-xs text-gray-500 shadow-md"
+                className="w-24 h-32 bg-gray-800 rounded-lg border-4 border-green-800 flex items-center justify-center text-xs text-gray-400 shadow-md"
               >
                 place card
               </div>
@@ -136,7 +137,7 @@ export default function GamePage() {
         </div>
 
         {/* PLAYER LIST DISPLAY */}
-        <div className="bg-slate-200 p-4 rounded-xl shadow">
+        <div className="bg-gray-900 p-4 rounded-xl shadow border border-gray-700">
           <h2 className="text-xl font-bold mb-3">
             Players
           </h2>
@@ -144,7 +145,7 @@ export default function GamePage() {
             {players.map((p) => (
               <div
                 key={p.name}
-                className="bg-white px-4 py-2 rounded-lg shadow font-medium flex gap-2 items-center"
+                className="bg-gray-800 px-4 py-2 rounded-lg shadow font-medium flex gap-2 items-center"
               >
                 {p.name} 
                 {p.name === lobby.host && <span>👑</span>}

@@ -109,8 +109,8 @@ export default function LobbyPage() {
   // State guard for initial connection
   if (!lobby) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-200 via-blue-200 to-slate-300">
-        <p className="text-2xl font-bold text-black animate-pulse">Connecting to lobby...</p>
+      <div className="relative min-h-screen mx-auto flex flex-col bg-black overflow-hidden items-center justify-center">
+        <p className="text-2xl font-bold text-gray-300 animate-pulse">Connecting to lobby...</p>
       </div>
     );
   }
@@ -118,18 +118,23 @@ export default function LobbyPage() {
   const isHost = name === lobby.host;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-200 via-blue-200 to-slate-300 p-4">
-      <div className="bg-white/40 backdrop-blur-md p-10 rounded-xl shadow-xl w-[450px] text-black border border-white/20">
-        <h1 className="text-4xl font-bold text-center mb-6">Lobby</h1>
-        <p className="text-xl text-center mb-2">Code: <span className="font-mono font-bold bg-white/50 px-2 rounded">{code}</span></p>
-        <p className="text-center text-sm text-gray-600 mb-6 font-semibold">
+    <div className="relative min-h-screen mx-auto flex flex-col bg-black overflow-hidden items-center justify-center p-4">
+      <div className="bg-gray-900/80 p-10 rounded-xl shadow-xl w-[450px] text-gray-300 border border-gray-700">
+        <h1 className="text-4xl font-bold text-center mb-6 tracking-wide">Lobby</h1>
+
+        <p className="text-xl text-center mb-2">
+          Code: <span className="font-mono font-bold bg-gray-800 px-2 rounded">{code}</span>
+        </p>
+
+        <p className="text-center text-sm text-gray-400 mb-6 font-semibold">
           Capacity: {lobby.players.length} / {lobby.maxPlayers}
         </p>
         
         <h2 className="text-2xl mb-3 font-semibold">Players</h2>
+
         <ul className="mb-8 space-y-3">
           {lobby.players.map((player) => (
-            <li key={player.name} className="py-2 px-4 bg-white/50 rounded-lg flex justify-between items-center shadow-sm">
+            <li key={player.name} className="py-2 px-4 bg-gray-800 rounded-lg flex justify-between items-center shadow-sm">
               <span className="font-medium">
                 {player.name} {player.name === lobby.host && "👑"}
               </span>
@@ -138,7 +143,7 @@ export default function LobbyPage() {
               {isHost && player.name !== name && (
                 <button 
                     onClick={() => handleKickPlayer(player.name)}
-                    className="text-xs bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded transition-colors shadow-sm"
+                    className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded transition-colors shadow-sm"
                 >
                     Kick
                 </button>
@@ -154,21 +159,21 @@ export default function LobbyPage() {
                 disabled={lobby.players.length < 2}
                 className={`w-full text-white text-xl font-bold py-4 rounded-lg border-4 transition-all shadow-lg ${
                     lobby.players.length < 2 
-                    ? "bg-gray-500 border-gray-700 cursor-not-allowed opacity-50" 
+                    ? "bg-gray-600 border-gray-800 cursor-not-allowed opacity-50" 
                     : "bg-green-700 border-green-900 hover:bg-green-800 hover:scale-105"
                 }`}
             >
                 {lobby.players.length < 2 ? "Waiting for players..." : "Start Game"}
             </button>
             ) : (
-            <div className="text-center p-4 bg-blue-100/50 rounded-lg border-2 border-blue-400 italic mb-4">
+            <div className="text-center p-4 bg-gray-800 rounded-lg border-2 border-blue-500 italic mb-4">
                 Waiting for host to start...
             </div>
             )}
 
             <button
                 onClick={handleLeaveLobby}
-                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-lg transition-colors border border-slate-300 shadow-sm"
+                className="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2 rounded-lg transition-colors border border-gray-600 shadow-sm"
             >
                 Leave Lobby
             </button>
