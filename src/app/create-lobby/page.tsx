@@ -1,110 +1,88 @@
-"use client"; 
+"use client";
 
-import { useState } from "react"; 
-import { useRouter } from "next/navigation"; 
-
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function CreateLobby() {
 
-  const router = useRouter(); 
-  // Initialize router so we can redirect the user to another route
+  const router = useRouter();
 
-  // State variable to store the player's name entered in the input field
   const [playerName, setPlayerName] = useState("");
-
-  // State variable to store the maximum number of players allowed in the lobby
   const [maxPlayers, setMaxPlayers] = useState(6);
 
-  // Function triggered when the user presses the "Create Game" button
   function createLobby() {
 
-    
     if (!playerName) {
       alert("Please enter your name");
       return;
     }
 
-    // Generate a simple random lobby code
-    // Converts a random number to base36 and extracts a short uppercase string
     const lobbyCode = Math.random().toString(36).substring(2, 7).toUpperCase();
 
-    // Redirect user to the lobby page with query parameters
     router.push(`/lobby/${lobbyCode}?name=${playerName}&max=${maxPlayers}`);
   }
 
   return (
 
-    // Uses a gradient background for visual styling
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-200 via-blue-200 to-slate-300">
+    <div className="relative min-h-screen mx-auto flex flex-col bg-black overflow-hidden">
 
-      {/* Lobby creation card */}
-      <div className="bg-white/40 backdrop-blur-md p-10 rounded-xl shadow-xl w-[450px]">
+      <div className="flex flex-1 items-center justify-center">
 
-        {/* Page title */}
-        <h1 className="text-4xl font-bold text-center text-green-900 mb-6">
-          CREATE LOBBY
-        </h1>
+        <div className="bg-gray-900/80 p-10 rounded-xl shadow-xl w-[450px] border border-gray-700">
 
-        {/* Player Name Input Section */}
-        <div className="mb-6">
+          <h1 className="text-4xl font-bold text-center text-gray-300 mb-8 tracking-wide">
+            CREATE LOBBY
+          </h1>
 
-          {/* Label for player name input */}
-          <label className="block text-lg font-semibold text-black mb-2">
-            Player Name
-          </label>
+          {/* Player Name */}
+          <div className="mb-6">
 
-          {/* User enters their name */}
-          <input
-            type="text"
-            placeholder="Enter your name"
-            value={playerName} 
+            <label className="block text-lg font-semibold text-gray-300 mb-2">
+              Player Name
+            </label>
 
-            onChange={(e) => setPlayerName(e.target.value)} 
-            // Updates state whenever user types in the input field
+            <input
+              type="text"
+              placeholder="Enter your name"
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              className="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-700"
+            />
 
-            className="w-full p-3 rounded-lg border border-gray-400 text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-700"
-          />
-        </div>
+          </div>
 
-        {/* Max Players Selection Section */}
-        <div className="mb-8">
+          {/* Max Players */}
+          <div className="mb-8">
 
-          {/* Label for player count dropdown */}
-          <label className="block text-lg font-semibold text-black mb-2">
-            Max Players
-          </label>
+            <label className="block text-lg font-semibold text-gray-300 mb-2">
+              Max Players
+            </label>
 
-          {/* Dropdown menu to select maximum number of players */}
-          <select
-            value={maxPlayers} 
-            // Controlled component linked to maxPlayers state
+            <select
+              value={maxPlayers}
+              onChange={(e) => setMaxPlayers(Number(e.target.value))}
+              className="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-700"
+            >
 
-            onChange={(e) => setMaxPlayers(Number(e.target.value))} 
-            // Updates maxPlayers when a different option is selected
+              <option value={5}>5 Players</option>
+              <option value={6}>6 Players</option>
+              <option value={7}>7 Players</option>
+              <option value={8}>8 Players</option>
+              <option value={9}>9 Players</option>
+              <option value={10}>10 Players</option>
 
-            className="w-full p-3 rounded-lg border border-gray-400 text-black focus:outline-none focus:ring-2 focus:ring-green-700"
+            </select>
+
+          </div>
+
+          <button
+            onClick={createLobby}
+            className="w-full bg-green-700 text-white text-xl font-bold py-4 rounded-lg border-4 border-green-900 hover:bg-green-800 hover:scale-105 transition-all"
           >
+            CREATE GAME
+          </button>
 
-            {/* Available player count options */}
-            <option value={5}>5 Players</option>
-            <option value={6}>6 Players</option>
-            <option value={7}>7 Players</option>
-            <option value={8}>8 Players</option>
-            <option value={9}>9 Players</option>
-            <option value={10}>10 Players</option>
-
-          </select>
         </div>
-
-        {/* Button used to create the lobby */}
-        <button
-          onClick={createLobby} 
-          // Calls the createLobby function when clicked
-
-          className="w-full bg-green-700 text-white text-xl font-bold py-4 rounded-lg border-4 border-green-900 hover:bg-green-800 hover:scale-105 transition-all"
-        >
-          CREATE GAME
-        </button>
 
       </div>
 
