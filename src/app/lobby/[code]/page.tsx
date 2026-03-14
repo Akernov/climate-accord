@@ -1,166 +1,179 @@
 "use client";
 
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-
-import { useState } from "react";
-
+import { useState, useEffect } from "react";
 import { assignRoles } from "../../logic/page";
-// Function responsible for assigning roles to players when the game starts
+import { useSocket } from "@/context/SocketContext";
 
-// Type definition for a player in the lobby
 type Player = {
   name: string; 
   score: number; 
   role?: "advocate" | "lobbyist";
 };
 
-// Type definition describing the lobby/game state
 type Lobby = {
-  code: string;       // Unique lobby identifier
-  host: string;       // Player who created the lobby
-  players: Player[];  // List of players currently in the lobby
-  started: boolean;   // Whether the game has started
-  phase: string;      // Current game phase
-  round: number;      // Current round number
-  maxRounds: number;  // Maximum number of rounds in the game
+  code: string;       
+  host: string;       
+  players: Player[];  
+  started: boolean;   
+  phase: string;      
+  round: number;      
+  maxRounds: number;
+  maxPlayers: number; // Added to match server state
 };
 
 export default function LobbyPage() {
-
-  // Retrieve route and query parameters
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { socket } = useSocket();
 
-  const code = params.code as string; // Lobby code from dynamic route
-  const name = searchParams.get("name"); // Player name from query string
+  const code = params?.code as string; 
+  const name = searchParams.get("name") || ""; 
+  // Extract maxPlayers from URL (passed from create lobby screen)
+  const maxPlayersFromUrl = parseInt(searchParams.get("maxPlayers") || "5");
 
-  // Key used to store/retrieve the lobby from localStorage
-  const lobbyKey = `lobby-${code}`;
+  const [lobby, setLobby] = useState<Lobby | null>(null);
 
-  // Initialize lobby state using a lazy initializer
-  // This retrieves the lobby from localStorage or creates one if it does not exist
-  const [lobby] = useState<Lobby>(() => {
+  useEffect(() => {
+    // Only proceed if socket is connected and we have the URL data
+    if (!socket || !code || !name) return;
 
-    // If required parameters are missing, return an empty lobby object
-    if (!name || !code) {
-      return {
-        code: "",
-        host: "",
-        players: [],
-        started: false,
-        phase: "waiting",
-        round: 1,
-        maxRounds: 5
-      };
-    }
+    console.log(`Attempting to join lobby: ${code} as ${name}`);
 
-    // Attempt to retrieve an existing lobby from localStorage
-    const storedLobby = localStorage.getItem(lobbyKey);
+    // Join the lobby, passing the maxPlayers preference
+    socket.emit("join_lobby", { code, name, maxPlayers: maxPlayersFromUrl });
 
-    if (storedLobby) {
-
-      // Parse the stored lobby data
-      const parsed: Lobby = JSON.parse(storedLobby);
-
-      // If the current player is not already in the lobby, add them
-      if (!parsed.players.find((p) => p.name === name)) {
-        parsed.players.push({
-          name,
-          score: 0
-        });
-      }
-
-      // Update the stored lobby with the new player
-      localStorage.setItem(lobbyKey, JSON.stringify(parsed));
-
-      return parsed;
-    }
-
-    // If no lobby exists, create a new one and set the current player as host
-    const newLobby: Lobby = {
-      code,
-      host: name,
-      players: [{ name, score: 0 }],
-      started: false,
-      phase: "waiting",
-      round: 1,
-      maxRounds: 5
+    // Listen for state updates from server
+    const onLobbyUpdated = (updatedLobby: Lobby) => {
+      console.log("Lobby state received from server:", updatedLobby);
+      setLobby(updatedLobby);
     };
 
-    // Save the new lobby to localStorage
-    localStorage.setItem(lobbyKey, JSON.stringify(newLobby));
+    // Listen for the start signal
+    const onGameStarted = (startedLobby: Lobby) => {
+       console.log("Game start signal received!");
+       router.push(`/game/${code}?name=${name}`);
+    };
 
-    return newLobby;
-  });
+    // Listen if THIS specific client was kicked
+    const onKicked = () => {
+        alert("You have been removed from the lobby by the host.");
+        router.push("/");
+    };
 
-  // Extract commonly used lobby information
-  const players = lobby.players;
-  const host = lobby.host;
+    // Listen for server-side errors (e.g. Lobby Full)
+    const onError = (message: string) => {
+      console.log("Error received from server:", message);
+      alert(message);
+      router.push("/");
+    };
+
+    socket.on("lobby_updated", onLobbyUpdated);
+    socket.on("game_started", onGameStarted);
+    socket.on("player_kicked", onKicked);
+    socket.on("error_message", onError);
+
+    // Cleanup listeners on unmount
+    return () => {
+      socket.off("lobby_updated", onLobbyUpdated);
+      socket.off("game_started", onGameStarted);
+      socket.off("player_kicked", onKicked);
+      socket.off("error_message", onError);
+    };
+  }, [socket, code, name, router, maxPlayersFromUrl]);
+
+  const handleStartGame = () => {
+    if (!lobby || !socket) return;
+
+    const updatedLobby = { ...lobby };
+    // assignRoles logic is imported from logic/page.tsx
+    updatedLobby.players = assignRoles(updatedLobby.players);
+    updatedLobby.started = true;
+    updatedLobby.phase = "playing";
+
+    socket.emit("start_game", { code, updatedLobby });
+  };
+
+  const handleLeaveLobby = () => {
+    if (!socket) return;
+    socket.emit("leave_lobby", { code, name });
+    router.push("/");
+  };
+
+  const handleKickPlayer = (targetName: string) => {
+    if (!socket) return;
+    socket.emit("kick_player", { code, targetName });
+  };
+
+  // State guard for initial connection
+  if (!lobby) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-200 via-blue-200 to-slate-300">
+        <p className="text-2xl font-bold text-black animate-pulse">Connecting to lobby...</p>
+      </div>
+    );
+  }
+
+  const isHost = name === lobby.host;
 
   return (
-
-    // Main container for the lobby waiting room interface
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-200 via-blue-200 to-slate-300">
-
-      {/* Lobby display card */}
-      <div className="bg-white/40 backdrop-blur-md p-10 rounded-xl shadow-xl w-[450px] text-black">
-
-        {/* Page title */}
-        <h1 className="text-4xl font-bold text-center mb-6">
-          Lobby Waiting Room
-        </h1>
-
-        {/* Display the lobby code so players can join */}
-        <p className="text-xl text-center mb-6">
-          Lobby Code: <b>{code}</b>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-200 via-blue-200 to-slate-300 p-4">
+      <div className="bg-white/40 backdrop-blur-md p-10 rounded-xl shadow-xl w-[450px] text-black border border-white/20">
+        <h1 className="text-4xl font-bold text-center mb-6">Lobby</h1>
+        <p className="text-xl text-center mb-2">Code: <span className="font-mono font-bold bg-white/50 px-2 rounded">{code}</span></p>
+        <p className="text-center text-sm text-gray-600 mb-6 font-semibold">
+          Capacity: {lobby.players.length} / {lobby.maxPlayers}
         </p>
-
-        {/* Player list section */}
-        <h2 className="text-2xl mb-3">Players</h2>
-
-        {/* Display all players currently in the lobby */}
-        <ul className="mb-6">
-          {players.map((player) => (
-            <li key={player.name}>
-              {player.name} {player.name === host ? "(Host)" : ""}
+        
+        <h2 className="text-2xl mb-3 font-semibold">Players</h2>
+        <ul className="mb-8 space-y-3">
+          {lobby.players.map((player) => (
+            <li key={player.name} className="py-2 px-4 bg-white/50 rounded-lg flex justify-between items-center shadow-sm">
+              <span className="font-medium">
+                {player.name} {player.name === lobby.host && "👑"}
+              </span>
+              
+              {/* Kick button: Only visible to host, and can't kick yourself */}
+              {isHost && player.name !== name && (
+                <button 
+                    onClick={() => handleKickPlayer(player.name)}
+                    className="text-xs bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded transition-colors shadow-sm"
+                >
+                    Kick
+                </button>
+              )}
             </li>
           ))}
         </ul>
 
-        {/* Start Game button is only visible to the lobby host */}
-        {name === host && (
-          <button
-            onClick={() => {
+        <div className="space-y-3">
+            {isHost ? (
+            <button
+                onClick={handleStartGame}
+                disabled={lobby.players.length < 2}
+                className={`w-full text-white text-xl font-bold py-4 rounded-lg border-4 transition-all shadow-lg ${
+                    lobby.players.length < 2 
+                    ? "bg-gray-500 border-gray-700 cursor-not-allowed opacity-50" 
+                    : "bg-green-700 border-green-900 hover:bg-green-800 hover:scale-105"
+                }`}
+            >
+                {lobby.players.length < 2 ? "Waiting for players..." : "Start Game"}
+            </button>
+            ) : (
+            <div className="text-center p-4 bg-blue-100/50 rounded-lg border-2 border-blue-400 italic mb-4">
+                Waiting for host to start...
+            </div>
+            )}
 
-              // Retrieve the latest lobby state from localStorage
-              const storedLobby = localStorage.getItem(lobbyKey);
-              if (!storedLobby) return;
-
-              const lobby: Lobby = JSON.parse(storedLobby);
-
-              // Assign roles to players before starting the game
-              lobby.players = assignRoles(lobby.players);
-
-              // Update lobby state to indicate the game has started
-              lobby.started = true;
-              lobby.phase = "playing";
-
-              // Save the updated lobby back to localStorage
-              localStorage.setItem(lobbyKey, JSON.stringify(lobby));
-
-              // Navigate players to the main game page
-              router.push(`/game/${code}?name=${name}`);
-            }}
-
-            className="w-full bg-green-700 text-white text-xl font-bold py-4 rounded-lg border-4 border-green-900 hover:bg-green-800 hover:scale-105 transition-all"
-          >
-            Start Game
-          </button>
-        )}
-
+            <button
+                onClick={handleLeaveLobby}
+                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-lg transition-colors border border-slate-300 shadow-sm"
+            >
+                Leave Lobby
+            </button>
+        </div>
       </div>
-
     </div>
   );
 }
