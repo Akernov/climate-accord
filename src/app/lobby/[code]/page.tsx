@@ -18,7 +18,8 @@ type Lobby = {
   started: boolean;   
   phase: string;      
   round: number;      
-  maxRounds: number;  
+  maxRounds: number;
+  maxPlayers: number; // Added to match server state
 };
 
 export default function LobbyPage() {
@@ -29,6 +30,8 @@ export default function LobbyPage() {
 
   const code = params?.code as string; 
   const name = searchParams.get("name") || ""; 
+  // Extract maxPlayers from URL (passed from create lobby screen)
+  const maxPlayersFromUrl = parseInt(searchParams.get("maxPlayers") || "5");
 
   const [lobby, setLobby] = useState<Lobby | null>(null);
 
@@ -38,8 +41,8 @@ export default function LobbyPage() {
 
     console.log(`Attempting to join lobby: ${code} as ${name}`);
 
-    // Join the lobby
-    socket.emit("join_lobby", { code, name });
+    // Join the lobby, passing the maxPlayers preference
+    socket.emit("join_lobby", { code, name, maxPlayers: maxPlayersFromUrl });
 
     // Listen for state updates from server
     const onLobbyUpdated = (updatedLobby: Lobby) => {
@@ -59,17 +62,26 @@ export default function LobbyPage() {
         router.push("/");
     };
 
+    // Listen for server-side errors (e.g. Lobby Full)
+    const onError = (message: string) => {
+      console.log("Error received from server:", message);
+      alert(message);
+      router.push("/");
+    };
+
     socket.on("lobby_updated", onLobbyUpdated);
     socket.on("game_started", onGameStarted);
     socket.on("player_kicked", onKicked);
+    socket.on("error_message", onError);
 
     // Cleanup listeners on unmount
     return () => {
       socket.off("lobby_updated", onLobbyUpdated);
       socket.off("game_started", onGameStarted);
       socket.off("player_kicked", onKicked);
+      socket.off("error_message", onError);
     };
-  }, [socket, code, name, router]);
+  }, [socket, code, name, router, maxPlayersFromUrl]);
 
   const handleStartGame = () => {
     if (!lobby || !socket) return;
@@ -109,9 +121,12 @@ export default function LobbyPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-200 via-blue-200 to-slate-300 p-4">
       <div className="bg-white/40 backdrop-blur-md p-10 rounded-xl shadow-xl w-[450px] text-black border border-white/20">
         <h1 className="text-4xl font-bold text-center mb-6">Lobby</h1>
-        <p className="text-xl text-center mb-6">Code: <span className="font-mono font-bold bg-white/50 px-2 rounded">{code}</span></p>
+        <p className="text-xl text-center mb-2">Code: <span className="font-mono font-bold bg-white/50 px-2 rounded">{code}</span></p>
+        <p className="text-center text-sm text-gray-600 mb-6 font-semibold">
+          Capacity: {lobby.players.length} / {lobby.maxPlayers}
+        </p>
         
-        <h2 className="text-2xl mb-3 font-semibold">Players ({lobby.players.length})</h2>
+        <h2 className="text-2xl mb-3 font-semibold">Players</h2>
         <ul className="mb-8 space-y-3">
           {lobby.players.map((player) => (
             <li key={player.name} className="py-2 px-4 bg-white/50 rounded-lg flex justify-between items-center shadow-sm">

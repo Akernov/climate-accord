@@ -30,14 +30,12 @@ io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
     // 1. Handle joining a lobby
-    socket.on('join_lobby', ({ code, name }) => {
+    socket.on('join_lobby', ({ code, name, maxPlayers }) => {
         if (!code || !name) {
             console.log("Join failed: Missing code or name");
             return;
         }
 
-        socket.join(code);
-        
         if (!lobbies[code]) {
             // Initialize lobby state if it doesn't exist
             console.log(`Creating new lobby: ${code} (Host: ${name})`);
@@ -48,12 +46,24 @@ io.on('connection', (socket) => {
                 started: false,
                 phase: "waiting",
                 round: 1,
-                maxRounds: 5
+                maxRounds: 5,
+                maxPlayers: maxPlayers || 5 // Store the capacity limit
             };
         }
 
         // Add the player if they aren't already in the list
         const playerExists = lobbies[code].players.find((p: any) => p.name === name);
+        
+        // CHECK: Is the lobby full? 
+        // We only block if it's a new player and count exceeds maxPlayers
+        if (!playerExists && lobbies[code].players.length >= lobbies[code].maxPlayers) {
+            console.log(`Join rejected: Lobby ${code} is full.`);
+            socket.emit('error_message', 'This lobby is full.');
+            return;
+        }
+
+        socket.join(code);
+        
         if (!playerExists) {
             // Store the socketId so we can target this specific user for "kicking"
             lobbies[code].players.push({ name, score: 0, socketId: socket.id });
