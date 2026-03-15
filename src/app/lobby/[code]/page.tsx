@@ -2,7 +2,6 @@
 
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { assignRoles } from "../../logic/page";
 import { useSocket } from "@/context/SocketContext";
 
 type Player = {
@@ -30,8 +29,11 @@ export default function LobbyPage() {
 
   const code = params?.code as string; 
   const name = searchParams.get("name") || ""; 
-  // Extract maxPlayers from URL (passed from create lobby screen)
-  const maxPlayersFromUrl = parseInt(searchParams.get("maxPlayers") || "5");
+  const maxPlayersParam = searchParams.get("maxPlayers") ?? searchParams.get("max");
+  const maxPlayersFromUrl = maxPlayersParam
+    ? Number.parseInt(maxPlayersParam, 10)
+    : undefined;
+  const createLobby = searchParams.get("create") === "1";
 
   const [lobby, setLobby] = useState<Lobby | null>(null);
 
@@ -42,7 +44,12 @@ export default function LobbyPage() {
     console.log(`Attempting to join lobby: ${code} as ${name}`);
 
     // Join the lobby, passing the maxPlayers preference
-    socket.emit("join_lobby", { code, name, maxPlayers: maxPlayersFromUrl });
+    socket.emit("join_lobby", {
+      code,
+      name,
+      maxPlayers: maxPlayersFromUrl,
+      createLobby,
+    });
 
     // Listen for state updates from server
     const onLobbyUpdated = (updatedLobby: Lobby) => {
@@ -51,7 +58,7 @@ export default function LobbyPage() {
     };
 
     // Listen for the start signal
-    const onGameStarted = (startedLobby: Lobby) => {
+    const onGameStarted = () => {
        console.log("Game start signal received!");
        router.push(`/game/${code}?name=${name}`);
     };
@@ -81,18 +88,11 @@ export default function LobbyPage() {
       socket.off("player_kicked", onKicked);
       socket.off("error_message", onError);
     };
-  }, [socket, code, name, router, maxPlayersFromUrl]);
+  }, [socket, code, name, router, maxPlayersFromUrl, createLobby]);
 
   const handleStartGame = () => {
     if (!lobby || !socket) return;
-
-    const updatedLobby = { ...lobby };
-    // assignRoles logic is imported from logic/page.tsx
-    updatedLobby.players = assignRoles(updatedLobby.players);
-    updatedLobby.started = true;
-    updatedLobby.phase = "playing";
-
-    socket.emit("start_game", { code, updatedLobby });
+    socket.emit("start_game", { code });
   };
 
   const handleLeaveLobby = () => {

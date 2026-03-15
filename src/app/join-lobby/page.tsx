@@ -19,16 +19,22 @@ export default function JoinLobby() {
 
   // Function executed when the user presses the "Join Game" button
   function joinLobby() {
+    const normalizedName = playerName.trim();
+    const normalizedCode = lobbyCode.trim().toUpperCase();
 
     // Validate that both fields have been filled in
-    if (!playerName || !lobbyCode) {
+    if (!normalizedName || !normalizedCode) {
       alert("Please enter your name and lobby code");
       return;
     }
 
+    const query = new URLSearchParams({
+      name: normalizedName,
+    });
+
     // Redirect the player to the lobby page
     // The lobby code becomes part of the route and the player name is passed as a query parameter
-    router.push(`/lobby/${lobbyCode.toUpperCase()}?name=${playerName}`);
+    router.push(`/lobby/${normalizedCode}?${query.toString()}`);
   }
 
   return (

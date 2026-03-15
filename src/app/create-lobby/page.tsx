@@ -18,8 +18,9 @@ export default function CreateLobby() {
   // Function triggered when the user presses the "Create Game" button
   function createLobby() {
 
-    
-    if (!playerName) {
+    const normalizedName = playerName.trim();
+
+    if (!normalizedName) {
       alert("Please enter your name");
       return;
     }
@@ -28,8 +29,14 @@ export default function CreateLobby() {
     // Converts a random number to base36 and extracts a short uppercase string
     const lobbyCode = Math.random().toString(36).substring(2, 7).toUpperCase();
 
+    const query = new URLSearchParams({
+      name: normalizedName,
+      maxPlayers: String(maxPlayers),
+      create: "1",
+    });
+
     // Redirect user to the lobby page with query parameters
-    router.push(`/lobby/${lobbyCode}?name=${playerName}&max=${maxPlayers}`);
+    router.push(`/lobby/${lobbyCode}?${query.toString()}`);
   }
 
   return (
