@@ -1,55 +1,38 @@
 "use client";
 
-import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { assignRoles } from "../../logic/page";
 import { useSocket } from "@/context/SocketContext";
 import "./LobbyPage.css";
 
 type Player = {
-  name: string;
-  score: number;
+  name: string; 
   role?: "advocate" | "lobbyist";
 };
 
 type Lobby = {
-  code: string;
-  host: string;
-  players: Player[];
-  started: boolean;
-  phase: string;
-  round: number;
-  maxRounds: number;
-  maxPlayers: number;
+  code: string;       
+  host: string;       
+  players: Player[];  
+  maxPlayers: number; 
 };
 
 export default function LobbyPage() {
-  const params = useParams();
-  const searchParams = useSearchParams();
   const router = useRouter();
+  const params = useParams();
   const { socket } = useSocket();
 
   const code = params?.code as string;
-  const name = searchParams.get("name") || "";
-  const maxPlayersFromUrl = parseInt(searchParams.get("maxPlayers") || "5");
 
   const [lobby, setLobby] = useState<Lobby | null>(null);
 
   useEffect(() => {
-    if (!socket || !code || !name) return;
+    if (!socket || !code) return;
 
-    console.log(`Attempting to join lobby: ${code} as ${name}`);
-
-    socket.emit("join_lobby", { code, name, maxPlayers: maxPlayersFromUrl });
-
+    // Listeners
     const onLobbyUpdated = (updatedLobby: Lobby) => {
-      console.log("Lobby state received from server:", updatedLobby);
       setLobby(updatedLobby);
-    };
-
-    const onGameStarted = (startedLobby: Lobby) => {
-      console.log("Game start signal received!");
-      router.push(`/game/${code}?name=${name}`);
     };
 
     const onKicked = () => {
@@ -58,31 +41,39 @@ export default function LobbyPage() {
     };
 
     const onError = (message: string) => {
-      console.log("Error received from server:", message);
       alert(message);
       router.push("/");
     };
 
     socket.on("lobby_updated", onLobbyUpdated);
-    socket.on("game_started", onGameStarted);
     socket.on("player_kicked", onKicked);
     socket.on("error_message", onError);
 
+    // Fetch the initial state upon entering the page!
+    socket.emit(
+      "lobby:get_state", 
+      { code }, 
+      (res: { status: "SUCCESS" | "ERROR"; error?: string }) => {
+        if (res.status === "ERROR") {
+            console.error("Failed to fetch lobby state:", res.error);
+            // Optional: Send the user back home if the lobby doesn't exist
+            router.push("/");
+        }
+      }
+    );
+
     return () => {
       socket.off("lobby_updated", onLobbyUpdated);
-      socket.off("game_started", onGameStarted);
       socket.off("player_kicked", onKicked);
       socket.off("error_message", onError);
     };
-  }, [socket, code, name, router, maxPlayersFromUrl]);
+  }, [socket, code, router]);
 
   const handleStartGame = () => {
     if (!lobby || !socket) return;
 
     const updatedLobby = { ...lobby };
     updatedLobby.players = assignRoles(updatedLobby.players);
-    updatedLobby.started = true;
-    updatedLobby.phase = "playing";
 
     socket.emit("start_game", { code, updatedLobby });
   };
@@ -106,7 +97,12 @@ export default function LobbyPage() {
     );
   }
 
-  const isHost = name === lobby.host;
+  // To check if the current user is host, you'll need the user's name saved somewhere, 
+  // or you could check socket.id against a host_socket_id attribute if you track it.
+  // For now, since `name` was removed from the URL, `isHost` logic needs 
+  // adjusting based on how you store session identity. If you are using localStorage:
+  // const isHost = localStorage.getItem("playerName") === lobby.host;
+  const isHost = false; // Adjust this according to your auth/session logic!
 
   return (
     <div className="lobby-container">
@@ -129,11 +125,12 @@ export default function LobbyPage() {
               <span className="lobby-player-name">
                 {player.name} {player.name === lobby.host && "👑"}
               </span>
-
-              {isHost && player.name !== name && (
-                <button
-                  onClick={() => handleKickPlayer(player.name)}
-                  className="lobby-kick-button"
+              
+              {/* Kick button: Only visible to host, and can't kick yourself */}
+              {isHost && player.name !== lobby.host && (
+                <button 
+                    onClick={() => handleKickPlayer(player.name)}
+                    className="lobby-kick-button"
                 >
                   Kick
                 </button>
