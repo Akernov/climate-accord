@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { assignRoles } from "../../logic/page";
 import { useSocket } from "@/context/SocketContext";
+import "./LobbyPage.css";
 
 type Player = {
   name: string; 
@@ -35,8 +36,8 @@ export default function LobbyPage() {
     };
 
     const onKicked = () => {
-        alert("You have been removed from the lobby by the host.");
-        router.push("/");
+      alert("You have been removed from the lobby by the host.");
+      router.push("/");
     };
 
     const onError = (message: string) => {
@@ -90,8 +91,8 @@ export default function LobbyPage() {
 
   if (!lobby) {
     return (
-      <div className="relative min-h-screen mx-auto flex flex-col bg-black overflow-hidden items-center justify-center">
-        <p className="text-2xl font-bold text-gray-300 animate-pulse">Connecting to lobby...</p>
+      <div className="lobby-loading-container">
+        <p className="lobby-loading-text">Connecting to lobby...</p>
       </div>
     );
   }
@@ -104,24 +105,24 @@ export default function LobbyPage() {
   const isHost = false; // Adjust this according to your auth/session logic!
 
   return (
-    <div className="relative min-h-screen mx-auto flex flex-col bg-black overflow-hidden items-center justify-center p-4">
-      <div className="bg-gray-900/80 p-10 rounded-xl shadow-xl w-[450px] text-gray-300 border border-gray-700">
-        <h1 className="text-4xl font-bold text-center mb-6 tracking-wide">Lobby</h1>
+    <div className="lobby-container">
+      <div className="lobby-card">
+        <h1 className="lobby-title">Lobby</h1>
 
-        <p className="text-xl text-center mb-2">
-          Code: <span className="font-mono font-bold bg-gray-800 px-2 rounded">{code}</span>
+        <p className="lobby-code">
+          Code: <span className="lobby-code-span">{code}</span>
         </p>
 
-        <p className="text-center text-sm text-gray-400 mb-6 font-semibold">
+        <p className="lobby-capacity">
           Capacity: {lobby.players.length} / {lobby.maxPlayers}
         </p>
-        
-        <h2 className="text-2xl mb-3 font-semibold">Players</h2>
 
-        <ul className="mb-8 space-y-3">
+        <h2 className="lobby-players-title">Players</h2>
+
+        <ul className="lobby-players-list">
           {lobby.players.map((player) => (
-            <li key={player.name} className="py-2 px-4 bg-gray-800 rounded-lg flex justify-between items-center shadow-sm">
-              <span className="font-medium">
+            <li key={player.name} className="lobby-player-item">
+              <span className="lobby-player-name">
                 {player.name} {player.name === lobby.host && "👑"}
               </span>
               
@@ -129,40 +130,35 @@ export default function LobbyPage() {
               {isHost && player.name !== lobby.host && (
                 <button 
                     onClick={() => handleKickPlayer(player.name)}
-                    className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded transition-colors shadow-sm"
+                    className="lobby-kick-button"
                 >
-                    Kick
+                  Kick
                 </button>
               )}
             </li>
           ))}
         </ul>
 
-        <div className="space-y-3">
-            {isHost ? (
+        <div className="lobby-actions">
+          {isHost ? (
             <button
-                onClick={handleStartGame}
-                disabled={lobby.players.length < 2}
-                className={`w-full text-white text-xl font-bold py-4 rounded-lg border-4 transition-all shadow-lg ${
-                    lobby.players.length < 2 
-                    ? "bg-gray-600 border-gray-800 cursor-not-allowed opacity-50" 
-                    : "bg-green-700 border-green-900 hover:bg-green-800 hover:scale-105"
-                }`}
+              onClick={handleStartGame}
+              disabled={lobby.players.length < 2}
+              className={`lobby-start-button ${
+                lobby.players.length < 2 ? "lobby-start-button-disabled" : "lobby-start-button-enabled"
+              }`}
             >
-                {lobby.players.length < 2 ? "Waiting for players..." : "Start Game"}
+              {lobby.players.length < 2 ? "Waiting for players..." : "Start Game"}
             </button>
-            ) : (
-            <div className="text-center p-4 bg-gray-800 rounded-lg border-2 border-blue-500 italic mb-4">
-                Waiting for host to start...
+          ) : (
+            <div className="lobby-waiting-message">
+              Waiting for host to start...
             </div>
-            )}
+          )}
 
-            <button
-                onClick={handleLeaveLobby}
-                className="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2 rounded-lg transition-colors border border-gray-600 shadow-sm"
-            >
-                Leave Lobby
-            </button>
+          <button onClick={handleLeaveLobby} className="lobby-leave-button">
+            Leave Lobby
+          </button>
         </div>
       </div>
     </div>
