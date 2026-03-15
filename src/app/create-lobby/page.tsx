@@ -2,21 +2,39 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSocket } from "@/context/SocketContext";
 import "./CreateLobby.css";
 
 export default function CreateLobby() {
   const router = useRouter();
   const [playerName, setPlayerName] = useState("");
   const [maxPlayers, setMaxPlayers] = useState(6);
+  const { socket } = useSocket();
 
-  function createLobby() {
+  async function createLobby() {
     if (!playerName) {
       alert("Please enter your name");
       return;
     }
 
-    const lobbyCode = Math.random().toString(36).substring(2, 7).toUpperCase();
-    router.push(`/lobby/${lobbyCode}?name=${playerName}&max=${maxPlayers}`);
+    if (!socket) return;
+
+    const res = await socket.emitWithAck("lobby:create", {
+      playerName: playerName,
+      maxPlayers: maxPlayers,
+    });
+
+    // 1. Change "OK" to "SUCCESS"
+    if (res.status === "SUCCESS") {
+      const newLobbyCode = res.data.lobbyCode;
+
+      // 2. You probably want to pass the name and maxPlayers to the lobby URL as query params
+      // so the lobby can auto-join on arrival!
+      router.push(`/lobby/${newLobbyCode}`);
+    } else {
+      // 3. Add an error catch so users know if it fails
+      alert(res.error || "Failed to create lobby");
+    }
   }
 
   return (

@@ -3,7 +3,6 @@ export type Role = "advocate" | "lobbyist";
 
 export type Player = {
   name: string;   // Player's display name
-  score: number;  // Current score during the game
   role?: Role;    // Role assigned at the start of the game
 };
 
@@ -12,13 +11,10 @@ export type Player = {
 export function getLobbyistCount(playerCount: number): number {
 
   // Small games have fewer lobbyists
-  if (playerCount <= 5) return 1;
+  if (playerCount <= 6) return 2;
 
   // Medium sized games
-  if (playerCount <= 7) return 2;
-
-  // Larger games
-  if (playerCount <= 9) return 3;
+  if (playerCount <= 8) return 3;
 
   // Maximum lobbyist count for very large games
   return 4;

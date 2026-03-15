@@ -3,19 +3,40 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import "./JoinLobby.css";
+import { useSocket } from "@/context/SocketContext";
 
 export default function JoinLobby() {
   const router = useRouter();
+  const { socket } = useSocket();
+
+  // State variable for storing the player's entered name
   const [playerName, setPlayerName] = useState("");
   const [lobbyCode, setLobbyCode] = useState("");
 
-  function joinLobby() {
+  // Function executed when the user presses the "Join Game" button
+  async function joinLobby() {
+
+    // Validate that both fields have been filled in
     if (!playerName || !lobbyCode) {
       alert("Please enter your name and lobby code");
       return;
     }
 
-    router.push(`/lobby/${lobbyCode.toUpperCase()}?name=${playerName}`);
+    if (!socket) return;
+
+    const res = await socket.emitWithAck("lobby:join", {
+      code: lobbyCode,
+      playerName: playerName
+    });
+
+    // 1. Change "OK" to "SUCCESS"
+    if (res.status === "SUCCESS") {
+
+      router.push(`/lobby/${lobbyCode}`);
+    } else {
+      // 3. Add an error catch so users know if it fails
+      alert(res.error || "Failed to join lobby");
+    }
   }
 
   return (
