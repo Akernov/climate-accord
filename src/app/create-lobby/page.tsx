@@ -11,8 +11,12 @@ export default function CreateLobby() {
   const [maxPlayers, setMaxPlayers] = useState(6);
   const { socket } = useSocket();
 
-  async function createLobby() {
-    if (!playerName) {
+  // Function triggered when the user presses the "Create Game" button
+  function createLobby() {
+
+    const normalizedName = playerName.trim();
+
+    if (!normalizedName) {
       alert("Please enter your name");
       return;
     }

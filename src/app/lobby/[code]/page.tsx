@@ -2,7 +2,6 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { assignRoles } from "../../logic/page";
 import { useSocket } from "@/context/SocketContext";
 import "./LobbyPage.css";
 
@@ -67,15 +66,11 @@ export default function LobbyPage() {
       socket.off("player_kicked", onKicked);
       socket.off("error_message", onError);
     };
-  }, [socket, code, router]);
+  }, [socket, code, name, router, maxPlayersFromUrl, createLobby]);
 
   const handleStartGame = () => {
     if (!lobby || !socket) return;
-
-    const updatedLobby = { ...lobby };
-    updatedLobby.players = assignRoles(updatedLobby.players);
-
-    socket.emit("start_game", { code, updatedLobby });
+    socket.emit("start_game", { code });
   };
 
   const handleLeaveLobby = () => {

@@ -65,3 +65,8 @@ export function assignRoles(players: Player[]): Player[] {
     role: shuffledRoles[index],
   }));
 }
+
+// Keeps this route valid for Next.js while exposing reusable helpers.
+export default function LogicPage() {
+  return null;
+}

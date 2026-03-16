@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import BillBoard from "@/components/BillBoard";
 import { useSocket } from "@/context/SocketContext";
@@ -24,6 +24,7 @@ type Lobby = {
 export default function GamePage() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { socket } = useSocket();
 
   const code = params.code as string;
@@ -35,19 +36,26 @@ export default function GamePage() {
     if (!socket || !code || !name) return;
 
     // Request the latest state from the server to get the assigned roles
-    socket.emit("join_lobby", { code, name });
+    socket.emit("join_lobby", { code, name, createLobby: false });
 
     // Update local state when the server responds
     const onLobbyUpdated = (serverLobby: Lobby) => {
       setLobby(serverLobby);
     };
 
+    const onError = (message: string) => {
+      alert(message);
+      router.push("/");
+    };
+
     socket.on("lobby_updated", onLobbyUpdated);
+    socket.on("error_message", onError);
 
     return () => {
       socket.off("lobby_updated", onLobbyUpdated);
+      socket.off("error_message", onError);
     };
-  }, [socket, code, name]);
+  }, [socket, code, name, router]);
 
   // Prevent rendering the board until we have the data from the server
   if (!lobby) {

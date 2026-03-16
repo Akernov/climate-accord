@@ -14,10 +14,12 @@ export default function JoinLobby() {
   const [lobbyCode, setLobbyCode] = useState("");
 
   // Function executed when the user presses the "Join Game" button
-  async function joinLobby() {
+  function joinLobby() {
+    const normalizedName = playerName.trim();
+    const normalizedCode = lobbyCode.trim().toUpperCase();
 
     // Validate that both fields have been filled in
-    if (!playerName || !lobbyCode) {
+    if (!normalizedName || !normalizedCode) {
       alert("Please enter your name and lobby code");
       return;
     }
