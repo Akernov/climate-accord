@@ -1,5 +1,6 @@
 import express from 'express';
 import http from 'http';
+import pg from "pg";
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -305,7 +306,8 @@ io.on('connection', (socket) => {
                 // Update the lobby list for everyone else
                 io.to(code).emit('lobby_updated', lobby);
             }
-        }
+        });
+        */
     });
 
     // 4. Start game event
@@ -365,9 +367,17 @@ io.on('connection', (socket) => {
                 break;
             }
         }
-    });
-});
+    },
+    cors: {
+        origin: "http://localhost:3000",
+        methods: ["GET", "POST"]
+    }
+};
 
-server.listen(PORT, () => {
-    console.log(`>>>> Server running on http://localhost:${PORT}`);
+createApp(httpServer, config).then(() => {
+    httpServer.listen(PORT, () => {
+        console.log(`>>>> Server running on http://localhost:${PORT}`);
+    });
+}).catch(err => {
+    console.error("Failed to start server:", err);
 });

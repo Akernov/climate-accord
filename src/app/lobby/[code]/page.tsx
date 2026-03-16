@@ -1,12 +1,12 @@
 "use client";
 
-import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useSocket } from "@/context/SocketContext";
+import "./LobbyPage.css";
 
 type Player = {
   name: string; 
-  score: number; 
   role?: "advocate" | "lobbyist";
 };
 
@@ -14,77 +14,55 @@ type Lobby = {
   code: string;       
   host: string;       
   players: Player[];  
-  started: boolean;   
-  phase: string;      
-  round: number;      
-  maxRounds: number;
-  maxPlayers: number; // Added to match server state
+  maxPlayers: number; 
 };
 
 export default function LobbyPage() {
-  const params = useParams();
-  const searchParams = useSearchParams();
   const router = useRouter();
+  const params = useParams();
   const { socket } = useSocket();
 
-  const code = params?.code as string; 
-  const name = searchParams.get("name") || ""; 
-  const maxPlayersParam = searchParams.get("maxPlayers") ?? searchParams.get("max");
-  const maxPlayersFromUrl = maxPlayersParam
-    ? Number.parseInt(maxPlayersParam, 10)
-    : undefined;
-  const createLobby = searchParams.get("create") === "1";
+  const code = params?.code as string;
 
   const [lobby, setLobby] = useState<Lobby | null>(null);
 
   useEffect(() => {
-    // Only proceed if socket is connected and we have the URL data
-    if (!socket || !code || !name) return;
+    if (!socket || !code) return;
 
-    console.log(`Attempting to join lobby: ${code} as ${name}`);
-
-    // Join the lobby, passing the maxPlayers preference
-    socket.emit("join_lobby", {
-      code,
-      name,
-      maxPlayers: maxPlayersFromUrl,
-      createLobby,
-    });
-
-    // Listen for state updates from server
+    // Listeners
     const onLobbyUpdated = (updatedLobby: Lobby) => {
-      console.log("Lobby state received from server:", updatedLobby);
       setLobby(updatedLobby);
     };
 
-    // Listen for the start signal
-    const onGameStarted = () => {
-       console.log("Game start signal received!");
-       router.push(`/game/${code}?name=${name}`);
-    };
-
-    // Listen if THIS specific client was kicked
     const onKicked = () => {
-        alert("You have been removed from the lobby by the host.");
-        router.push("/");
+      alert("You have been removed from the lobby by the host.");
+      router.push("/");
     };
 
-    // Listen for server-side errors (e.g. Lobby Full)
     const onError = (message: string) => {
-      console.log("Error received from server:", message);
       alert(message);
       router.push("/");
     };
 
     socket.on("lobby_updated", onLobbyUpdated);
-    socket.on("game_started", onGameStarted);
     socket.on("player_kicked", onKicked);
     socket.on("error_message", onError);
 
-    // Cleanup listeners on unmount
+    // Fetch the initial state upon entering the page!
+    socket.emit(
+      "lobby:get_state", 
+      { code }, 
+      (res: { status: "SUCCESS" | "ERROR"; error?: string }) => {
+        if (res.status === "ERROR") {
+            console.error("Failed to fetch lobby state:", res.error);
+            // Optional: Send the user back home if the lobby doesn't exist
+            router.push("/");
+        }
+      }
+    );
+
     return () => {
       socket.off("lobby_updated", onLobbyUpdated);
-      socket.off("game_started", onGameStarted);
       socket.off("player_kicked", onKicked);
       socket.off("error_message", onError);
     };
@@ -106,72 +84,76 @@ export default function LobbyPage() {
     socket.emit("kick_player", { code, targetName });
   };
 
-  // State guard for initial connection
   if (!lobby) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-200 via-blue-200 to-slate-300">
-        <p className="text-2xl font-bold text-black animate-pulse">Connecting to lobby...</p>
+      <div className="lobby-loading-container">
+        <p className="lobby-loading-text">Connecting to lobby...</p>
       </div>
     );
   }
 
-  const isHost = name === lobby.host;
+  // To check if the current user is host, you'll need the user's name saved somewhere, 
+  // or you could check socket.id against a host_socket_id attribute if you track it.
+  // For now, since `name` was removed from the URL, `isHost` logic needs 
+  // adjusting based on how you store session identity. If you are using localStorage:
+  // const isHost = localStorage.getItem("playerName") === lobby.host;
+  const isHost = false; // Adjust this according to your auth/session logic!
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-200 via-blue-200 to-slate-300 p-4">
-      <div className="bg-white/40 backdrop-blur-md p-10 rounded-xl shadow-xl w-[450px] text-black border border-white/20">
-        <h1 className="text-4xl font-bold text-center mb-6">Lobby</h1>
-        <p className="text-xl text-center mb-2">Code: <span className="font-mono font-bold bg-white/50 px-2 rounded">{code}</span></p>
-        <p className="text-center text-sm text-gray-600 mb-6 font-semibold">
+    <div className="lobby-container">
+      <div className="lobby-card">
+        <h1 className="lobby-title">Lobby</h1>
+
+        <p className="lobby-code">
+          Code: <span className="lobby-code-span">{code}</span>
+        </p>
+
+        <p className="lobby-capacity">
           Capacity: {lobby.players.length} / {lobby.maxPlayers}
         </p>
-        
-        <h2 className="text-2xl mb-3 font-semibold">Players</h2>
-        <ul className="mb-8 space-y-3">
+
+        <h2 className="lobby-players-title">Players</h2>
+
+        <ul className="lobby-players-list">
           {lobby.players.map((player) => (
-            <li key={player.name} className="py-2 px-4 bg-white/50 rounded-lg flex justify-between items-center shadow-sm">
-              <span className="font-medium">
+            <li key={player.name} className="lobby-player-item">
+              <span className="lobby-player-name">
                 {player.name} {player.name === lobby.host && "👑"}
               </span>
               
               {/* Kick button: Only visible to host, and can't kick yourself */}
-              {isHost && player.name !== name && (
+              {isHost && player.name !== lobby.host && (
                 <button 
                     onClick={() => handleKickPlayer(player.name)}
-                    className="text-xs bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded transition-colors shadow-sm"
+                    className="lobby-kick-button"
                 >
-                    Kick
+                  Kick
                 </button>
               )}
             </li>
           ))}
         </ul>
 
-        <div className="space-y-3">
-            {isHost ? (
+        <div className="lobby-actions">
+          {isHost ? (
             <button
-                onClick={handleStartGame}
-                disabled={lobby.players.length < 2}
-                className={`w-full text-white text-xl font-bold py-4 rounded-lg border-4 transition-all shadow-lg ${
-                    lobby.players.length < 2 
-                    ? "bg-gray-500 border-gray-700 cursor-not-allowed opacity-50" 
-                    : "bg-green-700 border-green-900 hover:bg-green-800 hover:scale-105"
-                }`}
+              onClick={handleStartGame}
+              disabled={lobby.players.length < 2}
+              className={`lobby-start-button ${
+                lobby.players.length < 2 ? "lobby-start-button-disabled" : "lobby-start-button-enabled"
+              }`}
             >
-                {lobby.players.length < 2 ? "Waiting for players..." : "Start Game"}
+              {lobby.players.length < 2 ? "Waiting for players..." : "Start Game"}
             </button>
-            ) : (
-            <div className="text-center p-4 bg-blue-100/50 rounded-lg border-2 border-blue-400 italic mb-4">
-                Waiting for host to start...
+          ) : (
+            <div className="lobby-waiting-message">
+              Waiting for host to start...
             </div>
-            )}
+          )}
 
-            <button
-                onClick={handleLeaveLobby}
-                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-lg transition-colors border border-slate-300 shadow-sm"
-            >
-                Leave Lobby
-            </button>
+          <button onClick={handleLeaveLobby} className="lobby-leave-button">
+            Leave Lobby
+          </button>
         </div>
       </div>
     </div>
