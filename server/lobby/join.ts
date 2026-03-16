@@ -21,7 +21,7 @@ export function joinLobby({ io, socket, db }: { io: Server, socket: Socket, db: 
         const game = await db.getGameByCode({ code });
         if (!game) throw new Error("Lobby not found");
 
-        if (game.status !== 'lobby') {
+        if (game.status !== 'waiting') {
             throw new Error("Game already started.");
         }
 

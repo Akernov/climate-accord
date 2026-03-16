@@ -14,6 +14,9 @@ import { leaveLobby } from './lobby/leave.js';
 import { kickPlayer } from './lobby/kick.js';
 import { startGame } from './lobby/start-game.js';
 
+import { generateBills } from './game/generateBills.js';
+
+
 dotenv.config();
 
 // Define the shape of your config object
@@ -81,6 +84,8 @@ export async function createApp(httpServer: http.Server, config: AppConfig) {
         socket.on("lobby:leave", leaveLobby({ io, socket, db }));
         socket.on("lobby:kick_player", kickPlayer({ io, socket, db }));
         socket.on("lobby:start_game", startGame({ io, socket, db }));
+        
+        socket.on("game:generate_bills", generateBills({ io, socket, db }));
 
         // Graceful disconnect logic could be implemented if tracking presence via connection state
         socket.on('disconnect', () => {

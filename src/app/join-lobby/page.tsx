@@ -32,7 +32,7 @@ export default function JoinLobby() {
       const { data: signInData, error } = await supabase.auth.signInAnonymously({
         options: {
           data: {
-            display_name: normalizedName,
+            display_name: `${normalizedName}_${Math.random().toString(36).substring(2, 6)}`,
           }
         }
       });

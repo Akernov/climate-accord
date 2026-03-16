@@ -30,7 +30,7 @@ export default function LoginPage() {
 
     void supabase.auth.getSession().then(({ data }) => {
       if (!isMounted) return;
-      if (data.session) {
+      if (data.session && !data.session.user.is_anonymous) {
         router.replace(nextPath);
       }
     });

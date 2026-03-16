@@ -4,20 +4,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useSocket } from "@/context/SocketContext";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { Player, Lobby } from "@/types/game";
 import "./LobbyPage.css";
-
-type Player = {
-  userId: string;
-  name: string; 
-  role?: "advocate" | "lobbyist";
-};
-
-type Lobby = {
-  code: string;       
-  host: string;       
-  players: Player[];  
-  maxPlayers: number; 
-};
 
 export default function LobbyPage() {
   const router = useRouter();

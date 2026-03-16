@@ -33,7 +33,7 @@ export function startGame({ io, socket, db }: { io: Server, socket: Socket, db: 
         }));
 
         await db.assignRoles({ gameId: game.game_id, updates });
-        await db.startGame({ gameId: game.game_id });
+        await db.updateGameStatus({ gameId: game.game_id, status: 'started', phase: 'Discussion' });
 
         const newState = await db.getLobbyState({ code });
 

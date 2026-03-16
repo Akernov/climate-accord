@@ -15,7 +15,7 @@ export function kickPlayer({ io, socket, db }: { io: Server, socket: Socket, db:
         if (!user) throw new Error("Unauthorized.");
 
         const code = normalizeCode(data.code);
-        const targetID = data.targetID.trim(); // No need to use normalizeName on a UUID
+        const targetID = data.targetID.trim();
         
         const game = await db.getGameByCode({ code });
         if (!game) throw new Error("Lobby not found");
@@ -26,7 +26,6 @@ export function kickPlayer({ io, socket, db }: { io: Server, socket: Socket, db:
 
         const players = await db.getPlayersInGame({ gameId: game.game_id });
         
-        // 2. Search for the player using their userId, not their name!
         const playerToKick = players.find(p => p.userId === targetID);
         
         if (!playerToKick) throw new Error("Player not found in lobby.");

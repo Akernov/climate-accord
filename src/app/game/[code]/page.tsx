@@ -5,23 +5,7 @@ import { useState, useEffect } from "react";
 import BillBoard from "@/components/BillBoard";
 import { useSocket } from "@/context/SocketContext";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-
-type Player = {
-  userId: string;
-  name: string;
-  score: number;
-  role?: "advocate" | "lobbyist";
-};
-
-type Lobby = {
-  code: string;
-  host: string;
-  players: Player[];
-  started: boolean;
-  phase: string;
-  round: number;
-  maxRounds: number;
-};
+import { Player, Lobby, Bill } from "@/types/game";
 
 export default function GamePage() {
   const router = useRouter();
@@ -46,7 +30,6 @@ export default function GamePage() {
     socket.on("lobby:updated", onLobbyUpdated);
     socket.on("error_message", onError);
 
-    // Initial state fetch exactly like the lobby route
     socket.emit(
       "lobby:get_state", 
       { code }, 
@@ -81,7 +64,6 @@ export default function GamePage() {
   }
 
   const players = lobby.players;
-  const round = lobby.round;
   const phase = lobby.phase;
 
   const currentPlayer = players.find((p) => p.userId === currentUserId);
@@ -101,7 +83,7 @@ export default function GamePage() {
         </p>
 
         <p className="text-md">
-          Round {round} • Phase: {phase}
+          Phase: {phase}
         </p>
 
         {currentPlayer?.role && (
@@ -117,7 +99,7 @@ export default function GamePage() {
       {/* MAIN GAME BOARD AREA */}
       <div className="w-full max-w-6xl space-y-8">
 
-        <BillBoard role={currentPlayer?.role} />
+        <BillBoard role={currentPlayer?.role} bills={[]} />
 
         {/* PLAYER LIST DISPLAY */}
         <div className="bg-gray-900 p-4 rounded-xl shadow border border-gray-700">

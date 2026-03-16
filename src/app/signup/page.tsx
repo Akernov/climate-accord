@@ -51,6 +51,18 @@ export default function SignupPage() {
 
     setIsSubmitting(true);
 
+    // Preemptively check if the username is already taken
+    const { count } = await supabase
+      .from("profiles")
+      .select("*", { count: "exact", head: true })
+      .eq("display_name", normalizedName);
+
+    if (count && count > 0) {
+      setErrorMessage("That display name is already taken. Please choose another.");
+      setIsSubmitting(false);
+      return;
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
@@ -62,7 +74,11 @@ export default function SignupPage() {
     });
 
     if (error) {
-      setErrorMessage(error.message);
+      if (error.message.includes("Database error saving new user")) {
+        setErrorMessage("That display name (or email) is already registered. Please try another.");
+      } else {
+        setErrorMessage(error.message);
+      }
       setIsSubmitting(false);
       return;
     }

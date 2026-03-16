@@ -40,7 +40,7 @@ export async function broadcastLobbyState(io: Server, gameCode: string, gameId: 
 }
 
 // Domain Utils
-export type Role = "advocate" | "lobbyist";
+import type { Role, Player } from "../src/types/game";
 
 export function normalizeCode(value: string): string {
     return value.trim().toUpperCase();
@@ -105,3 +105,18 @@ export function assignRoles<T extends { userId: string }>(players: T[]): (T & { 
         role: shuffledRoles[index],
     }));
 }
+/*
+export function generateBills(array: number[]) {
+    let LobbyistCategory, ActivistCategory, LobbyistScore, ActivistScore;
+
+    for (let i = 0; i < 3; i++) {
+        LobbyistCategory = Math.floor(Math.random() * 5);
+        ActivistCategory = Math.floor(Math.random() * 5);
+        LobbyistScore = Math.floor(Math.random() * 3);
+        ActivistScore = Math.floor(Math.random() * 3);
+
+    }
+
+}
+
+*/
