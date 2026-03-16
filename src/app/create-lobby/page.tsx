@@ -1,5 +1,6 @@
 "use client";
 
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSocket } from "@/context/SocketContext";
@@ -21,6 +22,27 @@ export default function CreateLobby() {
       return;
     }
 
+    const supabase = getSupabaseBrowserClient();
+    const { data: sessionData } = await supabase.auth.getSession();
+
+    if (!sessionData.session) {
+      const { data: signInData, error } = await supabase.auth.signInAnonymously({
+        options: {
+          data: {
+            display_name: normalizedName,
+          }
+        }
+      });
+
+      if (error) {
+        alert("Failed to connect as guest: " + error.message);
+        return;
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 500)); 
+    }
+
+
     if (!socket) return;
 
     const res = await socket.emitWithAck("lobby:create", {
@@ -36,6 +58,7 @@ export default function CreateLobby() {
       // so the lobby can auto-join on arrival!
       router.push(`/lobby/${newLobbyCode}`);
     } else {
+      console.error("DEBUG:", res);
       // 3. Add an error catch so users know if it fails
       alert(res.error || "Failed to create lobby");
     }

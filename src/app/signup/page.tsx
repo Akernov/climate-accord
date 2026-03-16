@@ -82,9 +82,9 @@ export default function SignupPage() {
       return;
     }
 
-    setSuccessMessage(
-      "Account created. Check your inbox to confirm your email, then return to login.",
-    );
+    // Since we disabled email auth, if there is NO error and NO session, something is weird.
+    // Replace the old success message advising them to check their inbox:
+    setErrorMessage("An unexpected error occurred during signup.");
     setIsSubmitting(false);
   }
 

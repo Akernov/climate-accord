@@ -17,6 +17,11 @@ export function getLobbyState({ io, socket, db }: { io: Server, socket: Socket, 
         const state = await db.getLobbyState({ code });
         if (!state) throw new Error("Lobby not found");
 
+        const playerExists = state.players.some(p => p.userId === user.id);
+        if (playerExists) {
+            socket.join(code);
+        }
+
         return state;
     });
 }

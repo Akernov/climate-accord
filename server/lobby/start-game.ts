@@ -38,8 +38,8 @@ export function startGame({ io, socket, db }: { io: Server, socket: Socket, db: 
         const newState = await db.getLobbyState({ code });
 
         console.log(`!!! Game Started in lobby: ${code} !!!`);
-        io.to(code).emit('game_started', newState);
-        io.to(code).emit('lobby_updated', newState);
+        io.to(code).emit('lobby:start_game', newState);
+        io.to(code).emit('lobby:updated', newState);
 
         return { success: true };
     });

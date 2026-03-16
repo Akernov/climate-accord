@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import "./JoinLobby.css";
 import { useSocket } from "@/context/SocketContext";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function JoinLobby() {
   const router = useRouter();
@@ -22,6 +23,26 @@ export default function JoinLobby() {
     if (!normalizedName || !normalizedCode) {
       alert("Please enter your name and lobby code");
       return;
+    }
+
+    const supabase = getSupabaseBrowserClient();
+    const { data: sessionData } = await supabase.auth.getSession();
+
+    if (!sessionData.session) {
+      const { data: signInData, error } = await supabase.auth.signInAnonymously({
+        options: {
+          data: {
+            display_name: normalizedName,
+          }
+        }
+      });
+
+      if (error) {
+        alert("Failed to connect as guest: " + error.message);
+        return;
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 500)); 
     }
 
     if (!socket) return;

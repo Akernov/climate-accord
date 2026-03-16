@@ -1,29 +1,7 @@
-import { Pool, PoolClient } from "pg";
 import { z, ZodSchema, ZodFormattedError } from "zod";
 import { Server } from "socket.io";
 import { DB } from "./db.js";
 import type { User } from "@supabase/supabase-js";
-
-export async function doInTransaction<T>(
-    pgPool: Pool,
-    query: (client: PoolClient) => Promise<T>
-): Promise<T> {
-  const client = await pgPool.connect();
-  let output: T;
-
-  try {
-    await client.query("BEGIN");
-    output = await query(client);
-    await client.query("COMMIT");
-  } catch (e) {
-    await client.query("ROLLBACK");
-    throw e;
-  } finally {
-    client.release();
-  }
-
-  return output;
-}
 
 export type SocketAckResponse<T> =
     | { status: "SUCCESS"; data: T }
@@ -33,26 +11,23 @@ export function withValidation<T extends ZodSchema, R>(
     schema: T,
     handler: (data: z.infer<T>) => Promise<R>
 ) {
-    return async (payload: unknown, callback: (res: SocketAckResponse<R>) => void) => {                                                                                 
-        if (typeof callback !== "function") return;
-
+    return async (payload: unknown, callback?: (res: SocketAckResponse<R>) => void) => {                                                                                 
         const parseResult = schema.safeParse(payload);
 
         if (!parseResult.success) {
-            return callback({
-                status: "ERROR",
-                error: "Validation failed",
-                issues: parseResult.error.format()
-            });
+            if (typeof callback === "function") callback({ status: "ERROR", error: "Validation failed" });
+            return;
         }
 
         try {
             const resultData = await handler(parseResult.data);
-            return callback({ status: "SUCCESS", data: resultData });
+            if (typeof callback === "function") callback({ status: "SUCCESS", data: resultData });
         } catch (e) {
+            console.error("CRITICAL BACKEND ERROR:", e); 
+            
             let error = "An unknown error occurred.";
             if (e instanceof Error) error = e.message;
-            return callback({ status: "ERROR", error });
+            if (typeof callback === "function") callback({ status: "ERROR", error });
         }
     };
 }
@@ -60,7 +35,7 @@ export function withValidation<T extends ZodSchema, R>(
 export async function broadcastLobbyState(io: Server, gameCode: string, gameId: string, db: DB) {                                                                   
     const state = await db.getLobbyState({ code: gameCode });
     if (state) {
-        io.to(gameCode).emit('lobby_updated', state);
+        io.to(gameCode).emit('lobby:updated', state);
     }
 }
 

@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { Server, Socket } from "socket.io";
 import { DB } from "../db.js";
-import { withValidation, broadcastLobbyState, getSocketUser, normalizeCode, normalizeName } from "../util.js";
+import { withValidation, broadcastLobbyState, getSocketUser, normalizeCode } from "../util.js";
 
+// 1. Accept targetID
 export const kickPlayerSchema = z.object({
   code: z.string(),
-  targetName: z.string()
+  targetID: z.string()
 });
 
 export function kickPlayer({ io, socket, db }: { io: Server, socket: Socket, db: DB }) {
@@ -14,7 +15,7 @@ export function kickPlayer({ io, socket, db }: { io: Server, socket: Socket, db:
         if (!user) throw new Error("Unauthorized.");
 
         const code = normalizeCode(data.code);
-        const targetName = normalizeName(data.targetName);
+        const targetID = data.targetID.trim(); // No need to use normalizeName on a UUID
         
         const game = await db.getGameByCode({ code });
         if (!game) throw new Error("Lobby not found");
@@ -24,16 +25,16 @@ export function kickPlayer({ io, socket, db }: { io: Server, socket: Socket, db:
         }
 
         const players = await db.getPlayersInGame({ gameId: game.game_id });
-        const playerToKick = players.find(p => p.name === targetName);
+        
+        // 2. Search for the player using their userId, not their name!
+        const playerToKick = players.find(p => p.userId === targetID);
         
         if (!playerToKick) throw new Error("Player not found in lobby.");
         if (playerToKick.userId === user.id) throw new Error("Cannot kick yourself.");
 
         await db.removePlayerFromGame({ gameId: game.game_id, userId: playerToKick.userId });
         
-        // Notify kicked player by socket room logic, maybe a dedicated private room or broadcast
-        // For now, emit lobby state and rely on frontend catching disconnect if any
-        io.to(code).emit('player_kicked', { name: targetName });
+        io.to(code).emit('lobby:kick_player', { targetID: playerToKick.userId });
         
         await broadcastLobbyState(io, code, game.game_id, db);
 

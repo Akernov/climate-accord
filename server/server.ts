@@ -1,11 +1,10 @@
 import express from 'express';
 import http from 'http';
-import pg from "pg";
+import { createClient } from "@supabase/supabase-js";
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { DB } from "./db.js";
-import { createAdapter } from "@socket.io/postgres-adapter";
 import { readBearerToken, verifyAccessToken } from "./supabase/verifier.js";
 
 import { createLobby } from './lobby/create.js';
@@ -19,25 +18,30 @@ dotenv.config();
 
 // Define the shape of your config object
 interface AppConfig {
-    postgres: pg.PoolConfig;
     cors: cors.CorsOptions;
 }
 
 export async function createApp(httpServer: http.Server, config: AppConfig) {
-    const pgPool = new pg.Pool(config.postgres);
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+        throw new Error('Supabase URL or Service Role Key missing from environment.');
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const app = express();
     // Attach express to the http server
     httpServer.on("request", app);
     app.use(cors(config.cors));
 
-    // Setup Socket.IO with the Postgres adapter
+    // Setup Socket.IO
     const io = new Server(httpServer, {
         cors: config.cors,
-        adapter: createAdapter(pgPool),
     });
 
-    const db = new DB(pgPool);
+    const db = new DB(supabase);
 
     // Auth Middleware
     io.use(async (socket, next) => {
@@ -85,10 +89,9 @@ export async function createApp(httpServer: http.Server, config: AppConfig) {
     });
 
     return {
-        pgPool,
+        supabase,
         async close() {
             io.close();
-            await pgPool.end();
         },
     };
 }
@@ -97,12 +100,6 @@ const httpServer = http.createServer();
 const PORT = process.env.PORT || 3001;
 
 const config = {
-    postgres: {
-        connectionString: process.env.DATABASE_URL,
-        ssl: {
-            rejectUnauthorized: false
-        }
-    },
     cors: {
         origin: "http://localhost:3000",
         methods: ["GET", "POST"]
