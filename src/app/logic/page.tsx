@@ -1,11 +1,4 @@
-// Role type used to represent the possible roles a player can receive
-export type Role = "advocate" | "lobbyist";
-
-export type Player = {
-  name: string;   // Player's display name
-  role?: Role;    // Role assigned at the start of the game
-};
-
+import { Role, Player } from "@/types/game";
 
 // This helps balance gameplay so the lobbyist team is smaller than the advocates
 export function getLobbyistCount(playerCount: number): number {

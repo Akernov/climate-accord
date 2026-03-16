@@ -1,5 +1,6 @@
 "use client";
 
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSocket } from "@/context/SocketContext";
@@ -12,7 +13,7 @@ export default function CreateLobby() {
   const { socket } = useSocket();
 
   // Function triggered when the user presses the "Create Game" button
-  function createLobby() {
+  async function createLobby() {
 
     const normalizedName = playerName.trim();
 
@@ -20,6 +21,27 @@ export default function CreateLobby() {
       alert("Please enter your name");
       return;
     }
+
+    const supabase = getSupabaseBrowserClient();
+    const { data: sessionData } = await supabase.auth.getSession();
+
+    if (!sessionData.session) {
+      const { data: signInData, error } = await supabase.auth.signInAnonymously({
+        options: {
+          data: {
+            display_name: `${normalizedName}_${Math.random().toString(36).substring(2, 6)}`,
+          }
+        }
+      });
+
+      if (error) {
+        alert("Failed to connect as guest: " + error.message);
+        return;
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 500)); 
+    }
+
 
     if (!socket) return;
 
@@ -36,6 +58,7 @@ export default function CreateLobby() {
       // so the lobby can auto-join on arrival!
       router.push(`/lobby/${newLobbyCode}`);
     } else {
+      console.error("DEBUG:", res);
       // 3. Add an error catch so users know if it fails
       alert(res.error || "Failed to create lobby");
     }

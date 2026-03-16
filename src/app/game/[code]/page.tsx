@@ -1,61 +1,58 @@
 "use client";
 
-import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import BillBoard from "@/components/BillBoard";
 import { useSocket } from "@/context/SocketContext";
-
-type Player = {
-  name: string;
-  score: number;
-  role?: "advocate" | "lobbyist";
-};
-
-type Lobby = {
-  code: string;
-  host: string;
-  players: Player[];
-  started: boolean;
-  phase: string;
-  round: number;
-  maxRounds: number;
-};
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { Player, Lobby, Bill } from "@/types/game";
 
 export default function GamePage() {
-  const params = useParams();
-  const searchParams = useSearchParams();
   const router = useRouter();
+  const params = useParams();
   const { socket } = useSocket();
 
-  const code = params.code as string;
-  const name = searchParams.get("name") || "";
+  const code = params?.code as string;
 
   const [lobby, setLobby] = useState<Lobby | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
 
   useEffect(() => {
-    if (!socket || !code || !name) return;
+    if (!socket || !code) return;
 
-    // Request the latest state from the server to get the assigned roles
-    socket.emit("join_lobby", { code, name, createLobby: false });
-
-    // Update local state when the server responds
-    const onLobbyUpdated = (serverLobby: Lobby) => {
-      setLobby(serverLobby);
-    };
+    const onLobbyUpdated = (serverLobby: Lobby) => setLobby(serverLobby);
 
     const onError = (message: string) => {
       alert(message);
       router.push("/");
     };
 
-    socket.on("lobby_updated", onLobbyUpdated);
+    socket.on("lobby:updated", onLobbyUpdated);
     socket.on("error_message", onError);
 
+    socket.emit(
+      "lobby:get_state", 
+      { code }, 
+      (res: { status: "SUCCESS" | "ERROR"; error?: string; data?: Lobby }) => {
+        if (res.status === "ERROR") {
+            console.error("Failed to fetch lobby state:", res.error);
+            router.push("/");
+        } else if (res.status === "SUCCESS" && res.data) {
+            setLobby(res.data);
+        }
+      }
+    );
+
+    // Fetch and store the user's UUID
+    getSupabaseBrowserClient().auth.getUser().then(({ data }) => {
+      if (data.user) setCurrentUserId(data.user.id);
+    });
+
     return () => {
-      socket.off("lobby_updated", onLobbyUpdated);
+      socket.off("lobby:updated", onLobbyUpdated);
       socket.off("error_message", onError);
     };
-  }, [socket, code, name, router]);
+  }, [socket, code, router]);
 
   // Prevent rendering the board until we have the data from the server
   if (!lobby) {
@@ -67,13 +64,9 @@ export default function GamePage() {
   }
 
   const players = lobby.players;
-  const round = lobby.round;
   const phase = lobby.phase;
 
-  const currentPlayer = players.find((p) => p.name === name);
-
-  const activistProgress = 0;
-  const lobbyistProgress = 0;
+  const currentPlayer = players.find((p) => p.userId === currentUserId);
 
   return (
     <div className="relative min-h-screen mx-auto flex flex-col bg-black overflow-hidden items-center p-8 text-gray-300">
@@ -90,7 +83,7 @@ export default function GamePage() {
         </p>
 
         <p className="text-md">
-          Round {round} • Phase: {phase}
+          Phase: {phase}
         </p>
 
         {currentPlayer?.role && (
@@ -105,44 +98,8 @@ export default function GamePage() {
 
       {/* MAIN GAME BOARD AREA */}
       <div className="w-full max-w-6xl space-y-8">
-        
-        {/* LOBBYIST POLICY TRACK */}
-        {currentPlayer?.role === "lobbyist" && (
-          <div className="bg-gradient-to-r from-red-700 to-red-600 p-6 rounded-2xl shadow-lg">
-            <h2 className="text-2xl font-bold text-center text-white mb-5">
-              Lobbyist Policy Track • Points: {lobbyistProgress}/6
-            </h2>
-            <div className="flex justify-center gap-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="w-24 h-32 bg-gray-800 rounded-lg border-4 border-red-800 flex items-center justify-center text-xs text-gray-400 shadow-md"
-                >
-                  place card
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
-        <BillBoard role={currentPlayer?.role} />
-
-        {/* ACTIVIST POLICY TRACK */}
-        <div className="bg-gradient-to-r from-green-700 to-green-600 p-6 rounded-2xl shadow-lg">
-          <h2 className="text-2xl font-bold text-center text-white mb-5">
-            Activist Policy Track • Points: {activistProgress}/5
-          </h2>
-          <div className="flex justify-center gap-4">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className="w-24 h-32 bg-gray-800 rounded-lg border-4 border-green-800 flex items-center justify-center text-xs text-gray-400 shadow-md"
-              >
-                place card
-              </div>
-            ))}
-          </div>
-        </div>
+        <BillBoard role={currentPlayer?.role} bills={[]} />
 
         {/* PLAYER LIST DISPLAY */}
         <div className="bg-gray-900 p-4 rounded-xl shadow border border-gray-700">
@@ -152,11 +109,11 @@ export default function GamePage() {
           <div className="flex flex-wrap gap-3 justify-center">
             {players.map((p) => (
               <div
-                key={p.name}
+                key={p.userId}
                 className="bg-gray-800 px-4 py-2 rounded-lg shadow font-medium flex gap-2 items-center"
               >
                 {p.name} 
-                {p.name === lobby.host && <span>👑</span>}
+                {p.userId === lobby.host && <span>👑</span>}
               </div>
             ))}
           </div>

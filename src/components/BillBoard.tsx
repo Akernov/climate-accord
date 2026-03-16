@@ -1,25 +1,14 @@
 "use client";
 
-import { bills } from "@/data/bills";
-
-import { useState } from "react";
-
+import { Role, Bill } from "@/types/game";
 
 // Props accepted by the BillBoard component
 type BillBoardProps = {
-  role?: "advocate" | "lobbyist"; // Player role used to determine what information should be visible
+  role?: Role; // Player role used to determine what information should be visible
+  bills: Bill[]; // Bills currently available for voting
 };
 
-export default function BillBoard({ role }: BillBoardProps) {
-
-  // Select a random subset of bills to display when the component first loads
-  // Bills are shuffled and the first three are chosen
-  const [displayedBills] = useState(() => {
-    return [...bills]
-      .sort(() => Math.random() - 0.5) // Randomize bill order
-      .slice(0, 3); // Show only three bills at a time
-  });
-
+export default function BillBoard({ role, bills }: BillBoardProps) {
   return (
 
     // Main container for the bill display board
@@ -34,27 +23,23 @@ export default function BillBoard({ role }: BillBoardProps) {
       <div className="flex justify-center gap-8 flex-wrap">
 
         {/* Render a card for each selected bill */}
-        {displayedBills.map((bill, i) => (
+        {bills.map((bill, i) => (
           <div
             key={i}
             className="w-64 bg-gray-800 border-4 border-blue-600 rounded-xl p-5 shadow-lg"
           >
-
-            {/* Bill title */}
-            <h3 className="text-lg font-bold mb-4 text-white">
-              {bill.title}
-            </h3>
-
+            {/* Title (if any) */}
+            {bill.title && <h3 className="font-bold mb-2">{bill.title}</h3>}
             {/* Advocate score impact (visible to all players) */}
             <p className="text-green-400 font-semibold">
-               Advocate: +{bill.advocate}
+               Advocate: +{bill.activistScore}
             </p>
 
             {/* Lobbyist score impact
                 Hidden from advocates to preserve hidden role mechanics */}
             {role === "lobbyist" ? (
               <p className="text-red-400 font-semibold">
-                 Lobbyist: {bill.lobbyist}
+                 Lobbyist: {bill.lobbyistScore > 0 ? "+" : ""}{bill.lobbyistScore}
               </p>
             ) : (
               <p className="text-gray-400 italic">

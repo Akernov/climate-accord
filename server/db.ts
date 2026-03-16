@@ -1,158 +1,148 @@
-import sql from "sql-bricks-postgres";
-import { Pool } from "pg";
-import { doInTransaction } from "./util.js";
-
-const { select, ilike, eq, not, lt, gt } = sql;
+import { SupabaseClient } from "@supabase/supabase-js";
+import type { Player, Lobby, Role } from "../src/types/game";
 
 export class DB {
-    pgPool: Pool;
+    supabase: SupabaseClient;
 
-    constructor(pgPool: Pool) { 
-        this.pgPool = pgPool;
+    constructor(supabase: SupabaseClient) {
+        this.supabase = supabase;
     }
 
-    createTempPlayer({ username }: { username: string; }) {
-        return doInTransaction(this.pgPool, async (client) => {
-        const results = await client.query(
-                "INSERT INTO players (username, password_hash, temp) VALUES ($1, $2, $3) RETURNING player_id",
-                [username, 'password', true]
-            );
+    async createLobby({ code, hostId, maxPlayers }: { code: string; hostId: string; maxPlayers: number }) {
+        const { data, error } = await this.supabase
+            .from('games')
+            .insert([{ lobby_code: code, host_user_id: hostId, max_players: maxPlayers, status: 'waiting' }])
+            .select('id, lobby_code')
+            .single();
+
+        if (error) throw new Error(error.message);
+        return { game_id: data.id, lobby_code: data.lobby_code };
+    }
+
+    async getGameByCode({ code }: { code: string }) {
+        const { data, error } = await this.supabase
+            .from('games')
+            .select('id, lobby_code, host_user_id, status, max_players, winner_faction, phase')
+            .eq('lobby_code', code)
+            .in('status', ['waiting', 'started', 'ended'])
+            .limit(1)
+            .maybeSingle();
+
+        if (error) throw new Error(error.message);
+        if (!data) return null;
+        
+        return {
+            game_id: data.id,
+            lobby_code: data.lobby_code,
+            host_user_id: data.host_user_id,
+            status: data.status,
+            max_players: data.max_players,
+            winner_faction: data.winner_faction,
+            phase: data.phase
+        };
+    }
+
+    async addPlayerToGame({ gameId, userId, displayName }: { gameId: string; userId: string; displayName: string }) {
+        const { error } = await this.supabase
+            .from('game_players')
+            .upsert({ 
+                game_id: gameId, 
+                user_id: userId, 
+                display_name_snapshot: displayName 
+            }, {
+                onConflict: 'game_id,user_id'
+            });
+
+        if (error) throw new Error(error.message);
+        return true;
+    }
+
+    async getPlayersInGame({ gameId }: { gameId: string }): Promise<Player[]> {
+        const { data, error } = await this.supabase
+            .from('game_players')
+            .select('user_id, display_name_snapshot, role')
+            .eq('game_id', gameId)
+            .order('created_at', { ascending: true });
+
+        if (error) throw new Error(error.message);
+        
+        return data.map(row => ({
+            userId: row.user_id,
+            name: row.display_name_snapshot,
+            role: row.role as Role
+        }));
+    }
+    
+    async getLobbyState({ code }: { code: string }): Promise<Lobby | null> {
+        const game = await this.getGameByCode({ code });
+        if (!game) return null;
+        const players = await this.getPlayersInGame({ gameId: game.game_id });
+        
+        return {
+            code: game.lobby_code,
+            host: game.host_user_id,
+            status: game.status,
+            phase: game.phase,
+            winnerFaction: game.winner_faction,
+            maxPlayers: game.max_players,
+            players
+        };
+    }
+
+    async removePlayerFromGame({ gameId, userId }: { gameId: string; userId: string }) {
+        const { data, error } = await this.supabase
+            .from('game_players')
+            .delete()
+            .match({ game_id: gameId, user_id: userId })
+            .select('display_name_snapshot')
+            .single();
+
+        if (error && error.code !== 'PGRST116') throw new Error(error.message); 
+        return data?.display_name_snapshot;
+    }
+
+    async deleteLobby({ gameId }: { gameId: string }) {
+        const { error } = await this.supabase
+            .from('games')
+            .delete()
+            .eq('id', gameId);
+
+        if (error) throw new Error(error.message);
+    }
+
+    async updateLobbyHost({ gameId, newHostId }: { gameId: string; newHostId: string }) {
+        const { error } = await this.supabase
+            .from('games')
+            .update({ host_user_id: newHostId })
+            .eq('id', gameId);
+
+        if (error) throw new Error(error.message);
+    }
+
+    async assignRoles({ gameId, updates }: { gameId: string; updates: {userId: string, role: string}[] }) {
+        for (const u of updates) {
+            const { error } = await this.supabase
+                .from('game_players')
+                .update({ role: u.role })
+                .match({ game_id: gameId, user_id: u.userId });
             
-            return results.rows[0].player_id;
-        });
+            if (error) throw new Error(error.message);
+        }
     }
 
-    deleteTempPlayer({ username }: { username: string; }) {
-        return doInTransaction(this.pgPool, async (client) => {
-            const result = await client.query(
-                "DELETE FROM players WHERE username = $1 AND temp = $2",
-                [username, true]
-            );
+    async updateGameStatus({ gameId, status, phase }: { gameId: string; status?: 'waiting' | 'started' | 'ended'; phase?: 'Bill Voting' | 'Discussion' | 'Player Voting' | null }) {
+        const updateData: {
+            status?: 'waiting' | 'started' | 'ended';
+            phase?: 'Bill Voting' | 'Discussion' | 'Player Voting' | null;
+        } = {};
+        if (status !== undefined) updateData.status = status;
+        if (phase !== undefined) updateData.phase = phase;
 
-            return result.rowCount? result.rowCount : 0;
-        });
-    }
-
-    createLobby({ code, hostId, maxPlayers }: { code: string; hostId: number; maxPlayers: number;}) {
-        return doInTransaction(this.pgPool, async (client) => {
-            const gameResult = await client.query(
-                `INSERT INTO games (code, host_id, status, max_players, player_count) 
-                VALUES ($1, $2, 'waiting', $3, 1) 
-                RETURNING game_id, code`,
-                [code, hostId, maxPlayers]
-            );
-
-            const newGame = gameResult.rows[0];
+        const { error } = await this.supabase
+            .from('games')
+            .update(updateData)
+            .eq('id', gameId);
             
-            await client.query(
-                `INSERT INTO game_players (game_id, player_id, role)
-                 VALUES ($1, $2, 'unassigned')`,
-                [newGame.game_id, hostId]
-            );
-
-            return newGame;
-        });
-    }
-
-    getGameByCode({ code }: { code: string;}) {
-        return doInTransaction(this.pgPool, async (client) => {
-            const result = await client.query(
-                `SELECT * FROM games WHERE code = $1`,
-                [code]
-            );
-
-            return result.rows[0];
-        });
-    }
-
-    getPlayerInGameByUsername({ gameId, username }: { gameId: number; username: string; }) {
-        return doInTransaction(this.pgPool, async (client) => {
-            const result = await client.query(
-                `SELECT p.player_id 
-                 FROM game_players gp 
-                 JOIN players p ON gp.player_id = p.player_id 
-                 WHERE gp.game_id = $1 AND p.username = $2 LIMIT 1`,
-                [gameId, username]
-            );
-            return result.rows[0];
-        });
-    }
-
-    getHostInGameByID({ gameId, playerId }: { gameId: number; playerId: number; }) {
-        return doInTransaction(this.pgPool, async (client) => {
-            const result = await client.query(
-                `SELECT p.player_id 
-                 FROM game_players gp 
-                 JOIN players p ON gp.player_id = p.player_id 
-                 WHERE gp.game_id = $1 AND g.host_id = $2 LIMIT 1`,
-                [gameId, playerId]
-            );
-            return result.rows[0];
-        }); 
-    }
-
-    addPlayerToGame({ gameId, playerId }: { gameId: number; playerId: number; }) {
-        return doInTransaction(this.pgPool, async (client) => {
-            await client.query(
-                `INSERT INTO game_players (game_id, player_id, role)
-                 VALUES ($1, $2, 'unassigned')`,
-                [gameId, playerId]
-            );
-
-            await client.query(
-                `UPDATE games 
-                 SET player_count = player_count + 1 
-                 WHERE game_id = $1`,
-                [gameId]
-            );
-            
-            return true;
-        });
-    }
-
-    getPlayersInGame({ gameId }: { gameId: number; }) {
-        return doInTransaction(this.pgPool, async (client) => {
-            const result = await client.query(
-                `SELECT p.username, gp.role
-                 FROM game_players gp 
-                 JOIN players p ON gp.player_id = p.player_id 
-                 WHERE gp.game_id = $1`,
-                [gameId]
-            );
-
-            return result.rows; 
-        });
-    }
-
-    getHostUsername({ gameId }: { gameId:number }) {
-        return doInTransaction(this.pgPool, async (client) => {
-          const res = await client.query(`
-            SELECT p.username 
-            FROM games g
-            JOIN players p ON g.host_id = p.player_id
-            WHERE g.game_id = $1
-          `, [gameId]);
-
-          return res.rows[0]?.username ?? null;
-        });
-      }
-
-    resolvePlayerJoin({ gameId, username, maxPlayers, currentCount }: 
-        { gameId: number; username: string; maxPlayers: number; currentCount: number; }) {
-        return doInTransaction(this.pgPool, async (client) => {
-            const existing = await this.getPlayerInGameByUsername({ gameId, username });
-            if (existing) {
-                return { playerId: existing.player_id, isNew: false };
-            }
-
-            if (currentCount >= maxPlayers) {
-                throw new Error("This lobby is full.");
-            }
-
-            const playerId = await this.createTempPlayer({ username });
-            await this.addPlayerToGame({ gameId, playerId });
-            
-            return { playerId, isNew: true };
-        });
+        if (error) throw new Error(error.message);
     }
 }

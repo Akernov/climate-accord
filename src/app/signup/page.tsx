@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { ensureProfileExists } from "@/lib/supabase/profile";
@@ -28,6 +28,22 @@ export default function SignupPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!isMounted) return;
+      // Boot the user out if they're already logged into a real account
+      if (data.session && !data.session.user.is_anonymous) {
+        router.replace(nextPath);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [supabase, router, nextPath]);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage("");
@@ -51,6 +67,18 @@ export default function SignupPage() {
 
     setIsSubmitting(true);
 
+    // Preemptively check if the username is already taken
+    const { count } = await supabase
+      .from("profiles")
+      .select("*", { count: "exact", head: true })
+      .eq("display_name", normalizedName);
+
+    if (count && count > 0) {
+      setErrorMessage("That display name is already taken. Please choose another.");
+      setIsSubmitting(false);
+      return;
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
@@ -62,7 +90,11 @@ export default function SignupPage() {
     });
 
     if (error) {
-      setErrorMessage(error.message);
+      if (error.message.includes("Database error saving new user")) {
+        setErrorMessage("That display name (or email) is already registered. Please try another.");
+      } else {
+        setErrorMessage(error.message);
+      }
       setIsSubmitting(false);
       return;
     }
@@ -82,9 +114,9 @@ export default function SignupPage() {
       return;
     }
 
-    setSuccessMessage(
-      "Account created. Check your inbox to confirm your email, then return to login.",
-    );
+    // Since we disabled email auth, if there is NO error and NO session, something is weird.
+    // Replace the old success message advising them to check their inbox:
+    setErrorMessage("An unexpected error occurred during signup.");
     setIsSubmitting(false);
   }
 

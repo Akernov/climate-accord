@@ -1,18 +1,27 @@
 import { z } from "zod";
 import { Server, Socket } from "socket.io";
-import { DB } from "../db.js"; 
-import { withValidation, broadcastLobbyState } from "../util.js";
+import { DB } from "../db.js";
+import { withValidation, getSocketUser, normalizeCode } from "../util.js";
 
-const getStateSchema = z.object({ code: z.string() });
+export const getLobbyStateSchema = z.object({
+  code: z.string(),
+});
 
 export function getLobbyState({ io, socket, db }: { io: Server, socket: Socket, db: DB }) {
-    return withValidation(getStateSchema, async ({ code }) => {
-        const game = await db.getGameByCode({ code });
-        if (!game) throw new Error("Lobby not found");
+    return withValidation(getLobbyStateSchema, async (data) => {
+        const user = getSocketUser(socket);
+        if (!user) throw new Error("Unauthorized.");
 
-        // Use the existing utility to send the lobby_updated event to this specific socket!
-        await broadcastLobbyState(io, code, game.game_id, db);
+        const code = normalizeCode(data.code);
+        
+        const state = await db.getLobbyState({ code });
+        if (!state) throw new Error("Lobby not found");
 
-        return { success: true };
+        const playerExists = state.players.some(p => p.userId === user.id);
+        if (playerExists) {
+            socket.join(code);
+        }
+
+        return state;
     });
 }

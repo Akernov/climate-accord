@@ -3,19 +3,9 @@
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useSocket } from "@/context/SocketContext";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { Player, Lobby } from "@/types/game";
 import "./LobbyPage.css";
-
-type Player = {
-  name: string; 
-  role?: "advocate" | "lobbyist";
-};
-
-type Lobby = {
-  code: string;       
-  host: string;       
-  players: Player[];  
-  maxPlayers: number; 
-};
 
 export default function LobbyPage() {
   const router = useRouter();
@@ -25,64 +15,59 @@ export default function LobbyPage() {
   const code = params?.code as string;
 
   const [lobby, setLobby] = useState<Lobby | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
 
   useEffect(() => {
     if (!socket || !code) return;
 
-    // Listeners
-    const onLobbyUpdated = (updatedLobby: Lobby) => {
-      setLobby(updatedLobby);
+    const onLobbyUpdated = (updatedLobby: Lobby) => setLobby(updatedLobby);
+    
+    const onKicked = (data: { targetID: string }) => {
+      // ONLY redirect if the person kicked was ME
+      if (data.targetID === currentUserId) {
+        alert("You have been removed from the lobby by the host.");
+        router.push("/");
+      }
     };
 
-    const onKicked = () => {
-      alert("You have been removed from the lobby by the host.");
-      router.push("/");
-    };
+    const onStart = () => {
+      router.push(`/game/${lobby?.code}`)
+    }
 
     const onError = (message: string) => {
       alert(message);
       router.push("/");
     };
 
-    socket.on("lobby_updated", onLobbyUpdated);
-    socket.on("player_kicked", onKicked);
+    socket.on("lobby:updated", onLobbyUpdated);
+    socket.on("lobby:kick_player", onKicked);
+    socket.on("lobby:start_game", onStart);
     socket.on("error_message", onError);
 
-    // Fetch the initial state upon entering the page!
     socket.emit(
       "lobby:get_state", 
       { code }, 
-      (res: { status: "SUCCESS" | "ERROR"; error?: string }) => {
+      (res: { status: "SUCCESS" | "ERROR"; error?: string; data?: Lobby }) => {
         if (res.status === "ERROR") {
             console.error("Failed to fetch lobby state:", res.error);
-            // Optional: Send the user back home if the lobby doesn't exist
             router.push("/");
+        } else if (res.status === "SUCCESS" && res.data) {
+            setLobby(res.data);
         }
       }
     );
 
+    getSupabaseBrowserClient().auth.getUser().then(({ data }) => {
+      if (data.user) setCurrentUserId(data.user.id);
+    });
+
     return () => {
-      socket.off("lobby_updated", onLobbyUpdated);
-      socket.off("player_kicked", onKicked);
+      socket.off("lobby:updated", onLobbyUpdated);
+      socket.off("lobby:kick_player", onKicked);
+      socket.on("lobby:start_game", onStart);
       socket.off("error_message", onError);
     };
-  }, [socket, code, name, router, maxPlayersFromUrl, createLobby]);
-
-  const handleStartGame = () => {
-    if (!lobby || !socket) return;
-    socket.emit("start_game", { code });
-  };
-
-  const handleLeaveLobby = () => {
-    if (!socket) return;
-    socket.emit("leave_lobby", { code, name });
-    router.push("/");
-  };
-
-  const handleKickPlayer = (targetName: string) => {
-    if (!socket) return;
-    socket.emit("kick_player", { code, targetName });
-  };
+  }, [socket, code, router, currentUserId, lobby?.code]); 
 
   if (!lobby) {
     return (
@@ -92,12 +77,8 @@ export default function LobbyPage() {
     );
   }
 
-  // To check if the current user is host, you'll need the user's name saved somewhere, 
-  // or you could check socket.id against a host_socket_id attribute if you track it.
-  // For now, since `name` was removed from the URL, `isHost` logic needs 
-  // adjusting based on how you store session identity. If you are using localStorage:
-  // const isHost = localStorage.getItem("playerName") === lobby.host;
-  const isHost = false; // Adjust this according to your auth/session logic!
+  const isHost = lobby.host === currentUserId;
+  const isReadyToStart = lobby.players.length >= 2;
 
   return (
     <div className="lobby-container">
@@ -116,15 +97,14 @@ export default function LobbyPage() {
 
         <ul className="lobby-players-list">
           {lobby.players.map((player) => (
-            <li key={player.name} className="lobby-player-item">
+            <li key={player.userId} className="lobby-player-item">
               <span className="lobby-player-name">
-                {player.name} {player.name === lobby.host && "👑"}
+                {player.name} {player.userId === lobby.host && "👑"}
               </span>
               
-              {/* Kick button: Only visible to host, and can't kick yourself */}
-              {isHost && player.name !== lobby.host && (
+              {isHost && player.userId !== currentUserId && (
                 <button 
-                    onClick={() => handleKickPlayer(player.name)}
+                    onClick={() => socket?.emit("lobby:kick_player", { code, targetID: player.userId }, () => {})}
                     className="lobby-kick-button"
                 >
                   Kick
@@ -137,13 +117,11 @@ export default function LobbyPage() {
         <div className="lobby-actions">
           {isHost ? (
             <button
-              onClick={handleStartGame}
-              disabled={lobby.players.length < 2}
-              className={`lobby-start-button ${
-                lobby.players.length < 2 ? "lobby-start-button-disabled" : "lobby-start-button-enabled"
-              }`}
+              onClick={() => socket?.emit("lobby:start_game", { code }, () => {})}
+              disabled={!isReadyToStart}
+              className={`lobby-start-button ${!isReadyToStart ? "lobby-start-button-disabled" : "lobby-start-button-enabled"}`}
             >
-              {lobby.players.length < 2 ? "Waiting for players..." : "Start Game"}
+              {!isReadyToStart ? "Waiting for players..." : "Start Game"}
             </button>
           ) : (
             <div className="lobby-waiting-message">
@@ -151,7 +129,10 @@ export default function LobbyPage() {
             </div>
           )}
 
-          <button onClick={handleLeaveLobby} className="lobby-leave-button">
+          <button 
+            onClick={() => { socket?.emit("lobby:leave", { code }, () => {}); router.push("/"); }} 
+            className="lobby-leave-button"
+          >
             Leave Lobby
           </button>
         </div>
