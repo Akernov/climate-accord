@@ -31,6 +31,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
             if (!token) {
                 socket.disconnect();
                 setIsConnected(false);
+                console.log("Not Connected");
                 return;
             }
 

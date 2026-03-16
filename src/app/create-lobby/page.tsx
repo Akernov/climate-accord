@@ -12,7 +12,7 @@ export default function CreateLobby() {
   const { socket } = useSocket();
 
   // Function triggered when the user presses the "Create Game" button
-  function createLobby() {
+  async function createLobby() {
 
     const normalizedName = playerName.trim();
 

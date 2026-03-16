@@ -66,22 +66,22 @@ export default function LobbyPage() {
       socket.off("player_kicked", onKicked);
       socket.off("error_message", onError);
     };
-  }, [socket, code, name, router, maxPlayersFromUrl, createLobby]);
+  }, [socket, code, router]);
 
   const handleStartGame = () => {
     if (!lobby || !socket) return;
-    socket.emit("start_game", { code });
+    socket.emit("lobby:start_game", { code });
   };
 
   const handleLeaveLobby = () => {
     if (!socket) return;
-    socket.emit("leave_lobby", { code, name });
+    socket.emit("lobby:leave", { code });
     router.push("/");
   };
 
   const handleKickPlayer = (targetName: string) => {
     if (!socket) return;
-    socket.emit("kick_player", { code, targetName });
+    socket.emit("lobby:kick_player", { code, targetName });
   };
 
   if (!lobby) {

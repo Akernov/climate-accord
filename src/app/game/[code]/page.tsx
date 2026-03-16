@@ -36,7 +36,7 @@ export default function GamePage() {
     if (!socket || !code || !name) return;
 
     // Request the latest state from the server to get the assigned roles
-    socket.emit("join_lobby", { code, name, createLobby: false });
+    socket.emit("lobby:join", { code, playerName: name });
 
     // Update local state when the server responds
     const onLobbyUpdated = (serverLobby: Lobby) => {

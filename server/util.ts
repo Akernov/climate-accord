@@ -2,13 +2,10 @@ import { Pool, PoolClient } from "pg";
 import { z, ZodSchema, ZodFormattedError } from "zod";
 import { Server } from "socket.io";
 import { DB } from "./db.js";
+import type { User } from "@supabase/supabase-js";
 
-/**
- * Wraps database queries in a sterile transaction.
- * Automatically rolls back if an error occurs.
- */
 export async function doInTransaction<T>(
-    pgPool: Pool, 
+    pgPool: Pool,
     query: (client: PoolClient) => Promise<T>
 ): Promise<T> {
   const client = await pgPool.connect();
@@ -28,34 +25,24 @@ export async function doInTransaction<T>(
   return output;
 }
 
-/**
- * Standardized response format for client-side socket acknowledgments.
- */
-export type SocketAckResponse<T> = 
+export type SocketAckResponse<T> =
     | { status: "SUCCESS"; data: T }
-    | { status: "ERROR"; error: string; issues?: ZodFormattedError<unknown> };
+    | { status: "ERROR"; error: string; issues?: ZodFormattedError<unknown> };  
 
-/**
- * A Socket.IO event handler wrapper that automatically parses incoming payload 
- * data via Zod, catches any thrown errors, and returns a standardized SocketAckResponse.
- * 
- * @param schema The Zod schema to validate the incoming payload
- * @param handler The asynchronous logic to execute if validation passes
- */
 export function withValidation<T extends ZodSchema, R>(
     schema: T,
     handler: (data: z.infer<T>) => Promise<R>
 ) {
-    return async (payload: unknown, callback: (res: SocketAckResponse<R>) => void) => {
+    return async (payload: unknown, callback: (res: SocketAckResponse<R>) => void) => {                                                                                 
         if (typeof callback !== "function") return;
 
         const parseResult = schema.safeParse(payload);
-        
+
         if (!parseResult.success) {
-            return callback({ 
-                status: "ERROR", 
-                error: "Validation failed", 
-                issues: parseResult.error.format() 
+            return callback({
+                status: "ERROR",
+                error: "Validation failed",
+                issues: parseResult.error.format()
             });
         }
 
@@ -70,30 +57,76 @@ export function withValidation<T extends ZodSchema, R>(
     };
 }
 
-export async function broadcastLobbyState(io: Server, gameCode: string, gameId: number, db: DB) {
-    const game = await db.getGameByCode({ code: gameCode });
-    const players = await db.getPlayersInGame({ gameId });
-    const host = await db.getHostUsername({ gameId });
-    
-    interface LobbyPlayer {
-        name: string;
-        role?: string;
+export async function broadcastLobbyState(io: Server, gameCode: string, gameId: string, db: DB) {                                                                   
+    const state = await db.getLobbyState({ code: gameCode });
+    if (state) {
+        io.to(gameCode).emit('lobby_updated', state);
+    }
+}
+
+// Domain Utils
+export type Role = "advocate" | "lobbyist";
+
+export function normalizeCode(value: string): string {
+    return value.trim().toUpperCase();
+}
+
+export function normalizeName(value: string): string {
+    return value.trim();
+}
+
+export function getSocketUser(socket: { data: { user?: User } }): User | null {        
+    return socket.data.user ?? null;
+}
+
+export function getDisplayNameFromUser(user: User): string {
+    const maybeName = user.user_metadata?.display_name ?? user.user_metadata?.name;
+    if (typeof maybeName === "string" && maybeName.trim()) {
+        return maybeName.trim();
     }
 
-    interface LobbyUpdatedPayload {
-        code: string;
-        host: string;
-        players: LobbyPlayer[];
-        maxPlayers: number;
+    if (typeof user.email === "string" && user.email.trim()) {
+        return user.email.split("@")[0];
     }
 
-    io.to(gameCode).emit('lobby_updated', {
-        code: gameCode,
-        host: host, 
-        players: players.map((p): LobbyPlayer => ({
-            name: p.username,
-            role: p.role === "unassigned" ? undefined : p.role
-        })),
-        maxPlayers: game.max_players
-    } as LobbyUpdatedPayload);
+    return `user-${user.id.slice(0, 8)}`;
+}
+
+export function clampMaxPlayers(value: unknown): number {
+    const parsed = typeof value === "number" ? value : Number.parseInt(String(value), 10);
+    if (!Number.isFinite(parsed)) return 5;
+    const floored = Math.floor(parsed);
+    return Math.min(10, Math.max(2, floored));       
+}
+
+export function getLobbyistCount(playerCount: number): number {
+    if (playerCount <= 5) return 1;
+    if (playerCount <= 7) return 2;
+    if (playerCount <= 9) return 3;
+    return 4;
+}
+
+export function shuffleArray<T>(array: T[]): T[] {
+    const cloned = [...array];
+    for (let i = cloned.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const temp = cloned[i];
+        cloned[i] = cloned[j];
+        cloned[j] = temp;
+    }
+    return cloned;
+}
+
+export function assignRoles<T extends { userId: string }>(players: T[]): (T & { role: Role })[] {
+    const lobbyistCount = getLobbyistCount(players.length);
+    const roles: Role[] = [
+        ...Array(lobbyistCount).fill("lobbyist"),
+        ...Array(players.length - lobbyistCount).fill("advocate"),
+    ];
+    const shuffledRoles = shuffleArray(roles);
+
+    return players.map((player, index) => ({
+        ...player,
+        role: shuffledRoles[index],
+    }));
 }

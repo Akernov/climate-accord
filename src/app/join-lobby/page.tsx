@@ -14,7 +14,7 @@ export default function JoinLobby() {
   const [lobbyCode, setLobbyCode] = useState("");
 
   // Function executed when the user presses the "Join Game" button
-  function joinLobby() {
+  async function joinLobby() {
     const normalizedName = playerName.trim();
     const normalizedCode = lobbyCode.trim().toUpperCase();
 
