@@ -10,7 +10,6 @@ function getSafeNextPath(rawPath: string | null): string {
   if (!rawPath) {
     return "/";
   }
-
   return rawPath.startsWith("/") ? rawPath : "/";
 }
 
@@ -28,12 +27,12 @@ export default function SignupPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Redirect if already logged in
   useEffect(() => {
     let isMounted = true;
 
     void supabase.auth.getSession().then(({ data }) => {
       if (!isMounted) return;
-      // Boot the user out if they're already logged into a real account
       if (data.session && !data.session.user.is_anonymous) {
         router.replace(nextPath);
       }
@@ -67,7 +66,7 @@ export default function SignupPage() {
 
     setIsSubmitting(true);
 
-    // Preemptively check if the username is already taken
+    // Check if display name already taken
     const { count } = await supabase
       .from("profiles")
       .select("*", { count: "exact", head: true })
@@ -114,8 +113,6 @@ export default function SignupPage() {
       return;
     }
 
-    // Since we disabled email auth, if there is NO error and NO session, something is weird.
-    // Replace the old success message advising them to check their inbox:
     setErrorMessage("An unexpected error occurred during signup.");
     setIsSubmitting(false);
   }
@@ -123,116 +120,180 @@ export default function SignupPage() {
   const loginHref = `/login?next=${encodeURIComponent(nextPath)}`;
 
   return (
-    <div className="gameshow-bg relative min-h-screen overflow-hidden p-4 text-slate-950">
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-5xl items-center justify-center">
-        <div className="gameshow-card w-full max-w-2xl rounded-3xl p-7 md:p-10">
-          <p className="gameshow-chip inline-block rounded-full bg-[var(--show-yellow)] px-4 py-1 text-xs font-extrabold tracking-[0.22em] text-[var(--show-ink)] md:text-sm">
-            NEW CONTESTANT
-          </p>
+    <div className="relative min-h-screen mx-auto flex flex-col overflow-hidden text-white">
 
-          <h1 className="mt-4 text-4xl font-black tracking-tight md:text-5xl">
-            CREATE YOUR PLAYER CARD
+      {/* ===== BACKGROUND LAYERS ===== */}
+      {/* World map image */}
+      <div className="absolute inset-0 bg-[url('/images/worldmapbackground.png')] bg-cover bg-center opacity-15 blur-[2px]" />
+
+      {/* Green gradient overlay */}
+      <div className="absolute inset-0 animate-greenPulse bg-gradient-to-br from-green-400/50 via-transparent to-transparent blur-[40px]" />
+
+      {/* Gray gradient overlay */}
+      <div className="absolute inset-0 animate-grayPulse bg-gradient-to-tr from-gray-300/30 via-transparent to-transparent blur-[40px]" />
+
+      {/* Dark overlay for readability */}
+      <div className="absolute inset-0 bg-black/40" />
+
+      {/* ===== MAIN CONTENT ===== */}
+      <div className="relative z-10 flex flex-col min-h-screen">
+
+        {/* Header / Title */}
+        <header className="text-center py-12">
+          <h1 className="text-7xl font-extrabold tracking-widest text-gray-300 drop-shadow-lg">
+            CLIMATE <br /> ACCORD
           </h1>
-          <p className="mt-2 text-sm font-semibold text-slate-700 md:text-base">
-            Sign up and jump into the next fast-paced policy battle.
+          <p className="mt-4 text-lg text-gray-400">
+            Create your player card
           </p>
+        </header>
 
-          <form onSubmit={handleSubmit} className="mt-7 grid gap-4 md:grid-cols-2">
-            <div className="md:col-span-2">
-              <label className="block text-sm font-bold uppercase tracking-wide text-slate-800">
-                Display Name
-              </label>
-              <input
-                type="text"
-                value={displayName}
-                onChange={(event) => setDisplayName(event.target.value)}
-                required
-                className="mt-1 w-full rounded-xl border-[3px] border-[var(--show-ink)] bg-white px-4 py-3 text-base font-semibold text-slate-900 shadow-[0_4px_0_var(--show-ink)] outline-none focus:ring-4 focus:ring-cyan-300"
-                placeholder="How other players see you"
-              />
-            </div>
+        {/* Form Card */}
+        <main className="flex flex-1 items-center justify-center p-4">
+          <div className="w-full max-w-2xl bg-gray-900/90 backdrop-blur-sm rounded-xl border border-gray-700 shadow-xl p-6 md:p-8">
 
-            <div className="md:col-span-2">
-              <label className="block text-sm font-bold uppercase tracking-wide text-slate-800">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-                className="mt-1 w-full rounded-xl border-[3px] border-[var(--show-ink)] bg-white px-4 py-3 text-base font-semibold text-slate-900 shadow-[0_4px_0_var(--show-ink)] outline-none focus:ring-4 focus:ring-yellow-300"
-                placeholder="you@example.com"
-              />
-            </div>
+            <h2 className="text-2xl font-bold text-center mb-6">Sign Up</h2>
 
-            <div>
-              <label className="block text-sm font-bold uppercase tracking-wide text-slate-800">
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-                className="mt-1 w-full rounded-xl border-[3px] border-[var(--show-ink)] bg-white px-4 py-3 text-base font-semibold text-slate-900 shadow-[0_4px_0_var(--show-ink)] outline-none focus:ring-4 focus:ring-pink-300"
-                placeholder="At least 8 characters"
-              />
-            </div>
+            <form onSubmit={handleSubmit} className="space-y-5">
 
-            <div>
-              <label className="block text-sm font-bold uppercase tracking-wide text-slate-800">
-                Confirm Password
-              </label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                required
-                className="mt-1 w-full rounded-xl border-[3px] border-[var(--show-ink)] bg-white px-4 py-3 text-base font-semibold text-slate-900 shadow-[0_4px_0_var(--show-ink)] outline-none focus:ring-4 focus:ring-orange-300"
-                placeholder="Re-enter password"
-              />
-            </div>
+              {/* Display Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Display Name
+                </label>
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  required
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="How other players see you"
+                />
+              </div>
 
-            {errorMessage && (
-              <p className="gameshow-chip md:col-span-2 rounded-lg bg-[var(--show-pink)] px-3 py-2 text-sm font-bold text-[var(--show-ink)]">
-                {errorMessage}
-              </p>
-            )}
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="you@example.com"
+                />
+              </div>
 
-            {successMessage && (
-              <p className="gameshow-chip md:col-span-2 rounded-lg bg-[var(--show-cyan)] px-3 py-2 text-sm font-bold text-[var(--show-ink)]">
-                {successMessage}
-              </p>
-            )}
+              {/* Password & Confirm Password */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="At least 8 characters"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Confirm Password
+                  </label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="Re-enter password"
+                  />
+                </div>
+              </div>
 
-            <div className="md:col-span-2">
+              {/* Error / Success Messages */}
+              {errorMessage && (
+                <div className="bg-red-900/50 border border-red-700 text-red-200 rounded-lg px-4 py-3 text-sm">
+                  {errorMessage}
+                </div>
+              )}
+              {successMessage && (
+                <div className="bg-green-900/50 border border-green-700 text-green-200 rounded-lg px-4 py-3 text-sm">
+                  {successMessage}
+                </div>
+              )}
+
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="gameshow-button w-full rounded-xl bg-[var(--show-orange)] px-5 py-3 text-lg font-black uppercase tracking-wider text-[var(--show-ink)] disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full bg-green-700 text-white text-xl font-bold py-3 px-8 rounded-lg border-4 border-green-900 shadow-lg hover:scale-105 hover:bg-green-800 hover:shadow-[0_0_25px_rgba(34,197,94,0.6)] transition-all disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
               >
                 {isSubmitting ? "Creating Account..." : "Sign Up"}
               </button>
-            </div>
-          </form>
+            </form>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <Link
-              href={loginHref}
-              className="gameshow-button rounded-xl bg-[var(--show-cyan)] px-4 py-3 text-center text-sm font-black uppercase tracking-widest text-[var(--show-ink)]"
-            >
-              Go To Login
-            </Link>
-            <Link
-              href="/"
-              className="gameshow-button rounded-xl bg-[var(--show-yellow)] px-4 py-3 text-center text-sm font-black uppercase tracking-widest text-[var(--show-ink)]"
-            >
-              Back Home
-            </Link>
+            {/* Action Links */}
+            <div className="mt-6 grid grid-cols-2 gap-4">
+              <Link
+                href={loginHref}
+                className="text-center bg-blue-700 text-white font-bold py-3 px-4 rounded-lg border-4 border-blue-900 shadow-lg hover:scale-105 hover:bg-blue-800 hover:shadow-[0_0_25px_rgba(59,130,246,0.6)] transition-all"
+              >
+                Go To Login
+              </Link>
+              <Link
+                href="/"
+                className="text-center bg-gray-800 text-white font-bold py-3 px-4 rounded-lg border-4 border-black shadow-lg hover:scale-105 hover:bg-gray-900 transition-all"
+              >
+                Back Home
+              </Link>
+            </div>
           </div>
-        </div>
+        </main>
+
+        {/* Footer */}
+        <footer className="text-center pb-6 text-gray-600">
+          A SENG 401 Project
+        </footer>
       </div>
+
+      {/* ===== ANIMATION STYLES ===== */}
+      <style>{`
+        @keyframes greenPulse {
+          0%, 100% {
+            opacity: 0.7;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.2;
+            transform: scale(1.05);
+          }
+        }
+
+        @keyframes grayPulse {
+          0%, 100% {
+            opacity: 0.2;
+            transform: scale(1.05);
+          }
+          50% {
+            opacity: 0.7;
+            transform: scale(1);
+          }
+        }
+
+        .animate-greenPulse {
+          animation: greenPulse 8s ease-in-out infinite;
+        }
+
+        .animate-grayPulse {
+          animation: grayPulse 8s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 }
