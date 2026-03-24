@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import { useSocket } from "@/context/SocketContext";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Lobby } from "@/types/game";
-import "./LobbyPage.css";
 
 export default function LobbyPage() {
   const router = useRouter();
@@ -29,7 +28,7 @@ export default function LobbyPage() {
     const onLobbyUpdated = (updatedLobby: Lobby) => {
       setLobby(updatedLobby);
     };
-    
+
     const onKicked = (data: { targetID: string }) => {
       if (data.targetID === currentUserId) {
         alert("You have been removed from the lobby by the host.");
@@ -68,7 +67,7 @@ export default function LobbyPage() {
       socket.off("lobby:kick_player", onKicked);
       socket.off("error_message", onError);
     };
-  }, [socket, code, router, currentUserId]); 
+  }, [socket, code, router, currentUserId]);
 
   // LOADING SCREEN
   if (!lobby) {
@@ -157,10 +156,9 @@ export default function LobbyPage() {
                 }
                 disabled={!isReadyToStart}
                 className={`w-full text-xl font-bold py-4 rounded-lg border-4 transition-all
-                  ${
-                    isReadyToStart
-                      ? "bg-green-700 border-green-900 hover:bg-green-800 hover:scale-105 hover:shadow-[0_0_25px_rgba(34,197,94,0.6)]"
-                      : "bg-gray-600 border-gray-800 opacity-50 cursor-not-allowed"
+                  ${isReadyToStart
+                    ? "bg-green-700 border-green-900 hover:bg-green-800 hover:scale-105 hover:shadow-[0_0_25px_rgba(34,197,94,0.6)]"
+                    : "bg-gray-600 border-gray-800 opacity-50 cursor-not-allowed"
                   }`}
               >
                 {isReadyToStart ? "START GAME" : "Waiting for players..."}
