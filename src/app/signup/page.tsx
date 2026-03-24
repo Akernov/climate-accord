@@ -14,7 +14,9 @@ function getSafeNextPath(rawPath: string | null): string {
   return rawPath.startsWith("/") ? rawPath : "/";
 }
 
-export default function SignupPage() {
+import { Suspense } from "react";
+
+function SignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = getSafeNextPath(searchParams.get("next"));
@@ -234,5 +236,13 @@ export default function SignupPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-black">Loading...</div>}>
+      <SignupContent />
+    </Suspense>
   );
 }

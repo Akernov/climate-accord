@@ -19,7 +19,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
     // 1. Initialize the socket lazily in useState.
     // By passing a function to useState, it only runs once when the component mounts.
-    const [socket] = useState<Socket>(() => io("http://localhost:3001", {
+    const [socket] = useState<Socket>(() => io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001", {
         autoConnect: false // Don't auto-connect yet to keep initialization lightweight
     }));
     

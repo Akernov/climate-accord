@@ -2,10 +2,14 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import BillBoard from "@/components/BillBoard";
 import { useSocket } from "@/context/SocketContext";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Player, Lobby, Bill } from "@/types/game";
+import BillVotingPhase from "@/components/BillVotingPhase";
+import DiscussionPhase from "@/components/DiscussionPhase";
+import PlayerVotingPhase from "@/components/PlayerVotingPhase";
+import EndGameScreen from "@/components/EndGameScreen";
+import Timer from "@/components/Timer";
 
 export default function GamePage() {
   const router = useRouter();
@@ -68,6 +72,28 @@ export default function GamePage() {
 
   const currentPlayer = players.find((p) => p.userId === currentUserId);
 
+  if (lobby.status === 'ended') {
+      return (
+        <div className="relative min-h-screen mx-auto flex flex-col bg-black overflow-hidden items-center justify-center p-8">
+           <EndGameScreen lobby={lobby} currentPlayer={currentPlayer} />
+        </div>
+      );
+  }
+
+  const renderPhaseComponent = () => {
+    switch (phase) {
+      case 'Bill Voting':
+        return <BillVotingPhase lobby={lobby} currentPlayer={currentPlayer} />;
+      case 'Discussion':
+        return <DiscussionPhase lobby={lobby} currentPlayer={currentPlayer} />;
+      case 'Player Voting':
+      case 'Grace Period':
+        return <PlayerVotingPhase lobby={lobby} currentPlayer={currentPlayer} />;
+      default:
+        return <p>Waiting for the next phase...</p>;
+    }
+  };
+
   return (
     <div className="relative min-h-screen mx-auto flex flex-col bg-black overflow-hidden items-center p-8 text-gray-300">
       
@@ -77,29 +103,33 @@ export default function GamePage() {
         Climate Accord
         </h1>
  
-        
-        <p className="text-lg mt-2">
-          Lobby Code: <b>{code}</b>
-        </p>
+        <div className="mt-4 space-y-2">
+            <p className="text-lg">
+              Lobby Code: <b>{code}</b>
+            </p>
 
-        <p className="text-md">
-          Phase: {phase}
-        </p>
+            <div className="flex items-center justify-center gap-4">
+                <p className="text-md">
+                    Phase: {phase}
+                </p>
+                {lobby.phaseEndTime && <Timer endTime={lobby.phaseEndTime} />}
+            </div>
 
-        {currentPlayer?.role && (
-          <p className="mt-3 text-xl font-semibold">
-            Your Role:{" "}
-            {currentPlayer.role === "lobbyist"
-              ? "Industrial Lobbyist 🏭"
-              : "Climate Advocate 🌱"}
-          </p>
-        )}
+            {currentPlayer?.role && (
+              <p className="mt-3 text-xl font-semibold">
+                Your Role:{" "}
+                {currentPlayer.role === "lobbyist"
+                  ? "Industrial Lobbyist 🏭"
+                  : "Climate Advocate 🌱"}
+              </p>
+            )}
+        </div>
       </div>
 
       {/* MAIN GAME BOARD AREA */}
       <div className="w-full max-w-6xl space-y-8">
 
-        <BillBoard role={currentPlayer?.role} bills={[]} />
+        {renderPhaseComponent()}
 
         {/* PLAYER LIST DISPLAY */}
         <div className="bg-gray-900 p-4 rounded-xl shadow border border-gray-700">
@@ -107,15 +137,19 @@ export default function GamePage() {
             Players
           </h2>
           <div className="flex flex-wrap gap-3 justify-center">
-            {players.map((p) => (
-              <div
-                key={p.userId}
-                className="bg-gray-800 px-4 py-2 rounded-lg shadow font-medium flex gap-2 items-center"
-              >
-                {p.name} 
-                {p.userId === lobby.host && <span>👑</span>}
-              </div>
-            ))}
+            {players.map((p) => {
+              const isSpectator = (lobby.oustedPlayers || []).includes(p.userId);
+              return (
+                <div
+                  key={p.userId}
+                  className={`px-4 py-2 rounded-lg shadow font-medium flex gap-2 items-center ${isSpectator ? 'bg-gray-900 border border-gray-700 text-gray-600 line-through' : 'bg-gray-800 text-white'}`}
+                >
+                  {p.name} 
+                  {p.userId === lobby.host && <span>👑</span>}
+                  {isSpectator && <span className="text-xs ml-1 no-underline uppercase tracking-widest font-black text-gray-500">Ousted</span>}
+                </div>
+              );
+            })}
           </div>
         </div>
 

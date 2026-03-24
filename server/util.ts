@@ -2,6 +2,64 @@ import { z, ZodSchema, ZodFormattedError } from "zod";
 import { Server } from "socket.io";
 import { DB } from "./db.js";
 import type { User } from "@supabase/supabase-js";
+import { GameManager } from "./game/manager.js";
+import type { Role, Player, Lobby, Bill } from "../src/types/game";
+
+// --- SOCKET PRESENCE & SECURE BROADCASTING --- //
+
+const userIdToSocketIdMap = new Map<string, string>();
+
+export const trackSocket = (userId: string, socketId: string) => {
+    userIdToSocketIdMap.set(userId, socketId);
+};
+
+export const untrackSocket = (userId: string) => {
+    userIdToSocketIdMap.delete(userId);
+};
+
+/**
+ * Censors the lobby state based on the player's role and the game phase.
+ * This ensures that players only receive data they are authorized to see.
+ */
+export const censorLobbyForPlayer = (lobby: Lobby, player: Player): Lobby => {
+    // Create a deep copy to avoid modifying the original lobby object in memory
+    const lobbyCopy: Lobby = JSON.parse(JSON.stringify(lobby));
+  
+    const playerRole = player.role;
+    const currentPhase = lobby.phase;
+  
+    // Censor bills based on phase and role
+    if (lobbyCopy.bills && lobbyCopy.bills.length > 0) {
+      if (currentPhase === 'Discussion' && playerRole === 'advocate') {
+        // Advocates see no bills during discussion
+        lobbyCopy.bills = [];
+      } else if (currentPhase === 'Bill Voting' && playerRole === 'advocate') {
+        // Advocates see only the activist part of bills during voting
+        lobbyCopy.bills = lobbyCopy.bills.map(bill => ({
+          title: bill.title,
+          activistCategory: bill.activistCategory,
+          activistScore: bill.activistScore,
+        } as Bill)); // Cast to Bill, acknowledging missing optional fields
+      }
+    }
+  
+    return lobbyCopy;
+};
+
+export async function broadcastLobbyState(io: Server, gameCode: string, manager: GameManager) {
+    const lobby = manager.getGame(gameCode);
+    if (!lobby) return;
+
+    lobby.players.forEach(player => {
+        const socketId = userIdToSocketIdMap.get(player.userId);
+        if (socketId) {
+            const censoredState = censorLobbyForPlayer(lobby, player);
+            io.to(socketId).emit('lobby:updated', censoredState);
+        }
+    });
+}
+
+// --- VALIDATION & ERROR HANDLING --- //
 
 export type SocketAckResponse<T> =
     | { status: "SUCCESS"; data: T }
@@ -32,15 +90,7 @@ export function withValidation<T extends ZodSchema, R>(
     };
 }
 
-export async function broadcastLobbyState(io: Server, gameCode: string, gameId: string, db: DB) {                                                                   
-    const state = await db.getLobbyState({ code: gameCode });
-    if (state) {
-        io.to(gameCode).emit('lobby:updated', state);
-    }
-}
-
-// Domain Utils
-import type { Role, Player } from "../src/types/game";
+// --- DOMAIN UTILS --- //
 
 export function normalizeCode(value: string): string {
     return value.trim().toUpperCase();
@@ -105,18 +155,3 @@ export function assignRoles<T extends { userId: string }>(players: T[]): (T & { 
         role: shuffledRoles[index],
     }));
 }
-/*
-export function generateBills(array: number[]) {
-    let LobbyistCategory, ActivistCategory, LobbyistScore, ActivistScore;
-
-    for (let i = 0; i < 3; i++) {
-        LobbyistCategory = Math.floor(Math.random() * 5);
-        ActivistCategory = Math.floor(Math.random() * 5);
-        LobbyistScore = Math.floor(Math.random() * 3);
-        ActivistScore = Math.floor(Math.random() * 3);
-
-    }
-
-}
-
-*/

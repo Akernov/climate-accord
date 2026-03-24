@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useSocket } from "@/context/SocketContext";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { Player, Lobby } from "@/types/game";
+import { Lobby } from "@/types/game";
 import "./LobbyPage.css";
 
 export default function LobbyPage() {
@@ -18,21 +18,24 @@ export default function LobbyPage() {
   const [currentUserId, setCurrentUserId] = useState<string>("");
 
   useEffect(() => {
+    if (lobby?.status === 'started') {
+      router.push(`/game/${code}`);
+    }
+  }, [lobby, code, router]);
+
+  useEffect(() => {
     if (!socket || !code) return;
 
-    const onLobbyUpdated = (updatedLobby: Lobby) => setLobby(updatedLobby);
+    const onLobbyUpdated = (updatedLobby: Lobby) => {
+      setLobby(updatedLobby);
+    };
     
     const onKicked = (data: { targetID: string }) => {
-      // ONLY redirect if the person kicked was ME
       if (data.targetID === currentUserId) {
         alert("You have been removed from the lobby by the host.");
         router.push("/");
       }
     };
-
-    const onStart = () => {
-      router.push(`/game/${lobby?.code}`)
-    }
 
     const onError = (message: string) => {
       alert(message);
@@ -41,7 +44,6 @@ export default function LobbyPage() {
 
     socket.on("lobby:updated", onLobbyUpdated);
     socket.on("lobby:kick_player", onKicked);
-    socket.on("lobby:start_game", onStart);
     socket.on("error_message", onError);
 
     socket.emit(
@@ -64,10 +66,9 @@ export default function LobbyPage() {
     return () => {
       socket.off("lobby:updated", onLobbyUpdated);
       socket.off("lobby:kick_player", onKicked);
-      socket.on("lobby:start_game", onStart);
       socket.off("error_message", onError);
     };
-  }, [socket, code, router, currentUserId, lobby?.code]); 
+  }, [socket, code, router, currentUserId]); 
 
   if (!lobby) {
     return (

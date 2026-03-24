@@ -1,0 +1,48 @@
+import { z } from "zod";
+import { Server, Socket } from "socket.io";
+import { GameManager } from "./manager.js";
+import { withValidation, getSocketUser, broadcastLobbyState } from "../util.js";
+
+export const voteBillSchema = z.object({
+  billIndex: z.number().min(0).max(10), // Assuming max a few bills
+});
+
+export function voteBill({ io, socket, manager }: { io: Server, socket: Socket, manager: GameManager }) {
+    return withValidation(voteBillSchema, async (data) => {
+        const user = getSocketUser(socket);
+        if (!user) throw new Error("Unauthorized.");
+
+        // Identify the lobby
+        const code = manager.getPlayerLobby(user.id);
+        if (!code) throw new Error("You are not in a lobby.");
+
+        const game = manager.getGame(code);
+        if (!game) throw new Error("Game not found.");
+        
+        if (game.oustedPlayers && game.oustedPlayers.includes(user.id)) {
+            throw new Error("Spectators cannot vote.");
+        }
+
+        if (game.phase !== 'Bill Voting') {
+            throw new Error("You can only vote during the Bill Voting phase.");
+        }
+
+        // Validate bill index exists
+        if (data.billIndex < 0 || !game.bills || data.billIndex >= game.bills.length) {
+            throw new Error("Invalid bill selected.");
+        }
+
+        const updatedVotes = { ...game.votes, [user.id]: data.billIndex };
+        
+        manager.updateGame(code, {
+            votes: updatedVotes
+        });
+
+        // We don't necessarily need to broadcast the whole state just for a vote cast,
+        // but if we want to show 'Player X has voted', we can. For now, broadcasting 
+        // silently allows clients to sync if needed.
+        await broadcastLobbyState(io, code, manager);
+
+        return { success: true };
+    });
+}
