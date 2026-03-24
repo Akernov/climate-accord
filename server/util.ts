@@ -17,6 +17,10 @@ export const untrackSocket = (userId: string) => {
     userIdToSocketIdMap.delete(userId);
 };
 
+export const isUserConnected = (userId: string): boolean => {
+    return userIdToSocketIdMap.has(userId);
+};
+
 /**
  * Censors the lobby state based on the player's role and the game phase.
  * This ensures that players only receive data they are authorized to see.
@@ -24,25 +28,25 @@ export const untrackSocket = (userId: string) => {
 export const censorLobbyForPlayer = (lobby: Lobby, player: Player): Lobby => {
     // Create a deep copy to avoid modifying the original lobby object in memory
     const lobbyCopy: Lobby = JSON.parse(JSON.stringify(lobby));
-  
+
     const playerRole = player.role;
     const currentPhase = lobby.phase;
-  
+
     // Censor bills based on phase and role
     if (lobbyCopy.bills && lobbyCopy.bills.length > 0) {
-      if (currentPhase === 'Discussion' && playerRole === 'advocate') {
-        // Advocates see no bills during discussion
-        lobbyCopy.bills = [];
-      } else if (currentPhase === 'Bill Voting' && playerRole === 'advocate') {
-        // Advocates see only the activist part of bills during voting
-        lobbyCopy.bills = lobbyCopy.bills.map(bill => ({
-          title: bill.title,
-          activistCategory: bill.activistCategory,
-          activistScore: bill.activistScore,
-        } as Bill)); // Cast to Bill, acknowledging missing optional fields
-      }
+        if (currentPhase === 'Discussion' && playerRole === 'advocate') {
+            // Advocates see no bills during discussion
+            lobbyCopy.bills = [];
+        } else if (currentPhase === 'Bill Voting' && playerRole === 'advocate') {
+            // Advocates see only the activist part of bills during voting
+            lobbyCopy.bills = lobbyCopy.bills.map(bill => ({
+                title: bill.title,
+                activistCategory: bill.activistCategory,
+                activistScore: bill.activistScore,
+            } as Bill)); // Cast to Bill, acknowledging missing optional fields
+        }
     }
-  
+
     return lobbyCopy;
 };
 
@@ -63,13 +67,13 @@ export async function broadcastLobbyState(io: Server, gameCode: string, manager:
 
 export type SocketAckResponse<T> =
     | { status: "SUCCESS"; data: T }
-    | { status: "ERROR"; error: string; issues?: ZodFormattedError<unknown> };  
+    | { status: "ERROR"; error: string; issues?: ZodFormattedError<unknown> };
 
 export function withValidation<T extends ZodSchema, R>(
     schema: T,
     handler: (data: z.infer<T>) => Promise<R>
 ) {
-    return async (payload: unknown, callback?: (res: SocketAckResponse<R>) => void) => {                                                                                 
+    return async (payload: unknown, callback?: (res: SocketAckResponse<R>) => void) => {
         const parseResult = schema.safeParse(payload);
 
         if (!parseResult.success) {
@@ -81,8 +85,8 @@ export function withValidation<T extends ZodSchema, R>(
             const resultData = await handler(parseResult.data);
             if (typeof callback === "function") callback({ status: "SUCCESS", data: resultData });
         } catch (e) {
-            console.error("CRITICAL BACKEND ERROR:", e); 
-            
+            console.error("CRITICAL BACKEND ERROR:", e);
+
             let error = "An unknown error occurred.";
             if (e instanceof Error) error = e.message;
             if (typeof callback === "function") callback({ status: "ERROR", error });
@@ -100,7 +104,7 @@ export function normalizeName(value: string): string {
     return value.trim();
 }
 
-export function getSocketUser(socket: { data: { user?: User } }): User | null {        
+export function getSocketUser(socket: { data: { user?: User } }): User | null {
     return socket.data.user ?? null;
 }
 
@@ -121,7 +125,7 @@ export function clampMaxPlayers(value: unknown): number {
     const parsed = typeof value === "number" ? value : Number.parseInt(String(value), 10);
     if (!Number.isFinite(parsed)) return 5;
     const floored = Math.floor(parsed);
-    return Math.min(10, Math.max(2, floored));       
+    return Math.min(10, Math.max(2, floored));
 }
 
 export function getLobbyistCount(playerCount: number): number {

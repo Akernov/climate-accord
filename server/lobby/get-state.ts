@@ -4,7 +4,7 @@ import { GameManager } from "../game/manager.js";
 import { withValidation, getSocketUser, normalizeCode } from "../util.js";
 
 export const getLobbyStateSchema = z.object({
-  code: z.string(),
+    code: z.string(),
 });
 
 export function getLobbyState({ io, socket, manager }: { io: Server, socket: Socket, manager: GameManager }) {
@@ -14,7 +14,6 @@ export function getLobbyState({ io, socket, manager }: { io: Server, socket: Soc
 
         const code = normalizeCode(data.code);
 
-        // Fetch straight from memory map rather than DB
         const state = manager.getGame(code);
         if (!state) throw new Error("Lobby not found");
 

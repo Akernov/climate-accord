@@ -4,8 +4,8 @@ import { GameManager } from "../game/manager.js";
 import { withValidation, getSocketUser, clampMaxPlayers, getDisplayNameFromUser, normalizeName } from "../util.js";
 
 export const createLobbySchema = z.object({
-  playerName: z.string().optional(),
-  maxPlayers: z.number().optional(),
+    playerName: z.string().optional(),
+    maxPlayers: z.number().optional(),
 });
 
 export function createLobby({ io, socket, manager }: { io: Server, socket: Socket, manager: GameManager }) {
@@ -25,13 +25,13 @@ export function createLobby({ io, socket, manager }: { io: Server, socket: Socke
         manager.initializeGame(newCode, {
             code: newCode,
             host: user.id,
-            players: [{ userId: user.id, name, isAnonymous: user.is_anonymous || false }],
+            players: [{ userId: user.id, name, isAnonymous: user.is_anonymous || false, isSpectator: false }],
             maxPlayers,
             phase: null,
             status: 'waiting',
             bills: [],
         });
-        
+
         manager.assignPlayerToLobby(user.id, newCode);
 
         socket.join(newCode);

@@ -3,10 +3,9 @@ import { Server, Socket } from "socket.io";
 import { GameManager } from "../game/manager.js";
 import { withValidation, broadcastLobbyState, getSocketUser, normalizeCode } from "../util.js";
 
-// 1. Accept targetID
 export const kickPlayerSchema = z.object({
-  code: z.string(),
-  targetID: z.string()
+    code: z.string(),
+    targetID: z.string()
 });
 
 export function kickPlayer({ io, socket, manager }: { io: Server, socket: Socket, manager: GameManager }) {
