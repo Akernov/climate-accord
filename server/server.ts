@@ -108,19 +108,20 @@ export async function createApp(httpServer: http.Server, config: AppConfig) {
             console.log('User disconnected:', socket.id);
             if (user) {
                 untrackSocket(user.id);
-
-                // Check if the user was in an active lobby
                 const activeCode = manager.getPlayerLobby(user.id);
                 if (activeCode) {
-                    const lobby = manager.getGame(activeCode);
-                    if (lobby) {
-                        const hasActivePlayers = lobby.players.some(p => isUserConnected(p.userId));
-                        if (!hasActivePlayers) {
-                            console.log(`Lobby ${activeCode} is completely empty. Closing game to save memory.`);
-                            lobby.players.forEach(p => manager.removePlayerFromLobby(p.userId));
-                            manager.endGame(activeCode);
+                    setTimeout(() => {
+                        const lobby = manager.getGame(activeCode);
+                        if (lobby) {
+                            const hasActivePlayers = lobby.players.some(p => isUserConnected(p.userId));
+
+                            if (!hasActivePlayers) {
+                                console.log(`Lobby ${activeCode} has been empty for 5s. Closing game to save memory.`);
+                                lobby.players.forEach(p => manager.removePlayerFromLobby(p.userId));
+                                manager.endGame(activeCode);
+                            }
                         }
-                    }
+                    }, 10000);
                 }
             }
         });
