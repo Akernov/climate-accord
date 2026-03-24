@@ -4,8 +4,8 @@ import { GameManager } from "../game/manager.js";
 import { withValidation, broadcastLobbyState, getSocketUser, normalizeCode, normalizeName, getDisplayNameFromUser } from "../util.js";
 
 export const joinLobbySchema = z.object({
-  code: z.string(),
-  playerName: z.string().optional(),
+    code: z.string(),
+    playerName: z.string().optional(),
 });
 
 export function joinLobby({ io, socket, manager }: { io: Server, socket: Socket, manager: GameManager }) {
@@ -30,13 +30,13 @@ export function joinLobby({ io, socket, manager }: { io: Server, socket: Socket,
         if (!playerExists) {
             const nameAlreadyTaken = game.players.some((p) => p.name === name);
             if (nameAlreadyTaken) throw new Error("That display name is already in use in this lobby.");
-            
+
             if (game.players.length >= game.maxPlayers) {
                 throw new Error("This lobby is full.");
             }
 
             manager.updateGame(code, {
-                players: [...game.players, { userId: user.id, name, isAnonymous: user.is_anonymous || false }]
+                players: [...game.players, { userId: user.id, name, isAnonymous: user.is_anonymous || false, isSpectator: false }]
             });
             manager.assignPlayerToLobby(user.id, code);
         }

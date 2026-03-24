@@ -5,6 +5,7 @@ export type Player = {
   name: string;
   role?: Role;
   isAnonymous?: boolean;
+  isSpectator: boolean;
 };
 
 export type LobbyPhase = 'Bill Voting' | 'Discussion' | 'Player Voting' | 'Grace Period' | null;
@@ -34,8 +35,8 @@ export type Lobby = {
 export type Bill = {
   title?: string;
   lobbyistCategory: number;
-  activistCategory: number; 
-  lobbyistScore: number;    
+  activistCategory: number;
+  lobbyistScore: number;
   activistScore: number;
 };
 

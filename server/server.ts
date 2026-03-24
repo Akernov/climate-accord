@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 import { DB } from "./db.js";
 import { GameManager } from "./game/manager.js";
 import { readBearerToken, verifyAccessToken } from "./supabase/verifier.js";
-import { trackSocket, untrackSocket } from "./util.js";
+import { trackSocket, untrackSocket, isUserConnected } from "./util.js";
 
 import { createLobby } from './lobby/create.js';
 import { joinLobby } from './lobby/join.js';
@@ -29,7 +29,7 @@ interface AppConfig {
 export async function createApp(httpServer: http.Server, config: AppConfig) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    
+
     if (!supabaseUrl || !supabaseServiceKey) {
         throw new Error('Supabase URL or Service Role Key missing from environment.');
     }
@@ -98,15 +98,30 @@ export async function createApp(httpServer: http.Server, config: AppConfig) {
         socket.on("lobby:leave", leaveLobby({ io, socket, manager }));
         socket.on("lobby:kick_player", kickPlayer({ io, socket, manager }));
         socket.on("lobby:start_game", startGame({ io, socket, db, manager }));
+
         socket.on("game:vote_bill", voteBill({ io, socket, manager }));
         socket.on("game:call_player_vote", callPlayerVote({ io, socket, manager, db }));
         socket.on("game:vote_player", votePlayer({ io, socket, manager }));
 
-        // Graceful disconnect logic could be implemented if tracking presence via connection state
+        // Graceful disconnect logic to clean up abandoned lobbies
         socket.on('disconnect', () => {
             console.log('User disconnected:', socket.id);
             if (user) {
                 untrackSocket(user.id);
+
+                // Check if the user was in an active lobby
+                const activeCode = manager.getPlayerLobby(user.id);
+                if (activeCode) {
+                    const lobby = manager.getGame(activeCode);
+                    if (lobby) {
+                        const hasActivePlayers = lobby.players.some(p => isUserConnected(p.userId));
+                        if (!hasActivePlayers) {
+                            console.log(`Lobby ${activeCode} is completely empty. Closing game to save memory.`);
+                            lobby.players.forEach(p => manager.removePlayerFromLobby(p.userId));
+                            manager.endGame(activeCode);
+                        }
+                    }
+                }
             }
         });
     });
