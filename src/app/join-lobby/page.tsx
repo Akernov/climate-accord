@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import "./JoinLobby.css";
 import { useSocket } from "@/context/SocketContext";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -10,16 +9,13 @@ export default function JoinLobby() {
   const router = useRouter();
   const { socket } = useSocket();
 
-  // State variable for storing the player's entered name
   const [playerName, setPlayerName] = useState("");
   const [lobbyCode, setLobbyCode] = useState("");
 
-  // Function executed when the user presses the "Join Game" button
   async function joinLobby() {
     const normalizedName = playerName.trim();
     const normalizedCode = lobbyCode.trim().toUpperCase();
 
-    // Validate that both fields have been filled in
     if (!normalizedName || !normalizedCode) {
       alert("Please enter your name and lobby code");
       return;
@@ -29,75 +25,127 @@ export default function JoinLobby() {
     const { data: sessionData } = await supabase.auth.getSession();
 
     if (!sessionData.session) {
-      const { data: signInData, error } = await supabase.auth.signInAnonymously({
+      const { error } = await supabase.auth.signInAnonymously({
         options: {
           data: {
-            display_name: `${normalizedName}_${Math.random().toString(36).substring(2, 6)}`,
-          }
-        }
+            display_name: `${normalizedName}_${Math.random()
+              .toString(36)
+              .substring(2, 6)}`,
+          },
+        },
       });
 
       if (error) {
         alert("Failed to connect as guest: " + error.message);
         return;
       }
-      
-      await new Promise(resolve => setTimeout(resolve, 500)); 
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
     if (!socket) return;
 
     const res = await socket.emitWithAck("lobby:join", {
-      code: lobbyCode,
-      playerName: playerName
+      code: normalizedCode,
+      playerName: normalizedName,
     });
 
-    // 1. Change "OK" to "SUCCESS"
     if (res.status === "SUCCESS") {
-
-      router.push(`/lobby/${lobbyCode}`);
+      router.push(`/lobby/${normalizedCode}`);
     } else {
-      // 3. Add an error catch so users know if it fails
       alert(res.error || "Failed to join lobby");
     }
   }
 
   return (
-    <div className="join-lobby-container">
-      <div className="join-lobby-center">
-        <div className="join-lobby-card">
-          <h1 className="join-lobby-title">JOIN LOBBY</h1>
+    <div className="relative min-h-screen flex flex-col overflow-hidden text-white">
 
-          {/* Player Name Input Section */}
-          <div className="join-lobby-input-group">
-            <label className="join-lobby-label">Player Name</label>
+      {/* BACKGROUND  */}
+      <div className="absolute inset-0 bg-[url('/images/worldmapbackground.png')] bg-cover bg-center opacity-15 blur-[2px]" />
+      <div className="absolute inset-0 animate-greenPulse bg-gradient-to-br from-green-400/50 via-green-300/20 to-transparent blur-[40px]" />
+      <div className="absolute inset-0 animate-grayPulse bg-gradient-to-tr from-gray-300/30 via-transparent to-transparent blur-[40px]" />
+      <div className="absolute inset-0 bg-black/40" />
+
+      {/*  CONTENT */}
+      <div className="relative z-10 flex flex-1 items-center justify-center">
+
+        <div className="bg-gray-900/80 p-10 rounded-xl w-[450px] border border-gray-700 shadow-xl backdrop-blur">
+
+          <h1 className="text-3xl font-bold text-center text-gray-300 mb-8 tracking-wide">
+            JOIN LOBBY
+          </h1>
+
+          {/* Player Name */}
+          <div className="mb-6">
+            <label className="block text-lg font-semibold text-gray-300 mb-2">
+              Player Name
+            </label>
             <input
               type="text"
               placeholder="Enter your name"
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
-              className="join-lobby-input"
+              className="w-full p-3 rounded-lg bg-gray-800 border border-gray-600 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
             />
           </div>
 
-          {/* Lobby Code Input Section */}
-          <div className="join-lobby-input-group">
-            <label className="join-lobby-label">Lobby Code</label>
+          {/* Lobby Code */}
+          <div className="mb-6">
+            <label className="block text-lg font-semibold text-gray-300 mb-2">
+              Lobby Code
+            </label>
             <input
               type="text"
               placeholder="Enter lobby code"
               value={lobbyCode}
-              onChange={(e) => setLobbyCode(e.target.value)}
-              className="join-lobby-code-input"
+              onChange={(e) => setLobbyCode(e.target.value.toUpperCase())}
+              className="w-full p-3 rounded-lg bg-gray-800 border border-gray-600 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition uppercase"
             />
           </div>
 
-          {/* Button used to attempt joining the lobby */}
-          <button onClick={joinLobby} className="join-lobby-button">
+          {/* Button */}
+          <button
+            onClick={joinLobby}
+            className="w-full bg-blue-700 text-white text-xl font-bold py-4 rounded-lg border-4 border-blue-900 shadow-lg hover:scale-105 hover:bg-blue-800 hover:shadow-[0_0_25px_rgba(59,130,246,0.6)] transition-all"
+          >
             JOIN GAME
           </button>
+
         </div>
       </div>
+
+      {/* ANIMATIONS */}
+      <style>{`
+        @keyframes greenPulse {
+          0%, 100% {
+            opacity: 0.7;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.2;
+            transform: scale(1.05);
+          }
+        }
+
+        @keyframes grayPulse {
+          0%, 100% {
+            opacity: 0.2;
+            transform: scale(1.05);
+          }
+          50% {
+            opacity: 0.7;
+            transform: scale(1);
+          }
+        }
+
+        .animate-greenPulse {
+          animation: greenPulse 8s ease-in-out infinite;
+        }
+
+        .animate-grayPulse {
+          animation: grayPulse 8s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 }
