@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import { useSocket } from "@/context/SocketContext";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Lobby } from "@/types/game";
-import "./LobbyPage.css";
 
 export default function LobbyPage() {
   const router = useRouter();
