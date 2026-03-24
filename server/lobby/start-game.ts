@@ -1,45 +1,72 @@
 import { z } from "zod";
 import { Server, Socket } from "socket.io";
 import { DB } from "../db.js";
-import { withValidation, getSocketUser, normalizeCode, assignRoles } from "../util.js";
+import { GameManager } from "../game/manager.js";
+import { withValidation, getSocketUser, normalizeCode, assignRoles, broadcastLobbyState } from "../util.js";
+import { generateBills } from "../game/generateBills.js";
+import { transitionToNextPhase } from "../game/next-phase.js";
 
 export const startGameSchema = z.object({
   code: z.string(),
 });
 
-export function startGame({ io, socket, db }: { io: Server, socket: Socket, db: DB }) {
+const PHASE_DURATION_MS = 20 * 1000; // 20 seconds
+
+export function startGame({ io, socket, db, manager }: { io: Server, socket: Socket, db: DB, manager: GameManager }) {
     return withValidation(startGameSchema, async (data) => {
         const user = getSocketUser(socket);
         if (!user) throw new Error("Unauthorized.");
 
         const code = normalizeCode(data.code);
-        
-        const game = await db.getGameByCode({ code });
+
+        const game = manager.getGame(code);
         if (!game) throw new Error("Lobby not found");
 
-        if (game.host_user_id !== user.id) {
+        if (game.host !== user.id) {
             throw new Error("Only the host can start the game.");
         }
 
-        const players = await db.getPlayersInGame({ gameId: game.game_id });
-        if (players.length < 2) {
+        if (game.players.length < 2) {
             throw new Error("Need at least 2 players to start.");
         }
 
-        const assignedRolesPlayers = assignRoles(players);
-        const updates = assignedRolesPlayers.map(p => ({
-            userId: p.userId,
-            role: p.role
-        }));
+        const assignedRolesPlayers = assignRoles(game.players);
+        const bills = generateBills();
 
-        await db.assignRoles({ gameId: game.game_id, updates });
-        await db.updateGameStatus({ gameId: game.game_id, status: 'started', phase: 'Discussion' });
+        // Database logic: purely creating the game record when actual game starts
+        const { game_id } = await db.createGame();
+        for (const player of assignedRolesPlayers) {
+            if (!player.isAnonymous) {
+                await db.addPlayerToGame({ gameId: game_id, userId: player.userId });
+            }
+        }
 
-        const newState = await db.getLobbyState({ code });
+        manager.updateGame(code, {
+            gameId: game_id,
+            status: 'started',
+            phase: 'Discussion',
+            players: assignedRolesPlayers,
+            bills: bills,
+            phaseEndTime: Date.now() + PHASE_DURATION_MS,
+            votes: {},
+            activistPoints: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+            lobbyistPoints: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+            lastPassedBill: null,
+            callPlayerVoteIds: [],
+            oustedPlayers: [],
+            playerVotes: {},
+            lastOustedPlayer: null,
+        });
 
-        console.log(`!!! Game Started in lobby: ${code} !!!`);
-        io.to(code).emit('lobby:start_game', newState);
-        io.to(code).emit('lobby:updated', newState);
+        // Broadcast the initial "game started" state
+        await broadcastLobbyState(io, code, manager);
+        
+        console.log(`Lobby ${code} started. First phase transition in ${PHASE_DURATION_MS / 1000}s.`);
+
+        // Kick off the automatic phase transition loop
+        setTimeout(() => {
+            transitionToNextPhase({ io, manager, code, db });
+        }, PHASE_DURATION_MS);
 
         return { success: true };
     });

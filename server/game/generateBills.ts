@@ -1,23 +1,19 @@
-import { z } from "zod";
-import { Server, Socket } from "socket.io";
-import { DB } from "../db.js";
-import { withValidation, broadcastLobbyState, getSocketUser } from "../util.js";
+import { Bill } from "../../src/types/game";
 
-export const generateBillsSchema = z.object({
-  code: z.string(),
-});
+// Helper function to get a random integer
+const getRandomInt = (min: number, max: number) => {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+};
 
-export function generateBills({ io, socket, db }: { io: Server, socket: Socket, db: DB }) {
-    return withValidation(generateBillsSchema, async (data) => {
-        const user = getSocketUser(socket);
-        if (!user) throw new Error("Unauthorized.");
-
-        const game = await db.getGameByCode({ code: data.code });
-
-        if (game?.host_user_id !== user.id) {
-            throw new Error("Only the host can draw bills right now.");
-        }
-
-        
+export const generateBills = (): Bill[] => {
+  const bills: Bill[] = [];
+  for (let i = 0; i < 3; i++) {
+    bills.push({
+      activistCategory: getRandomInt(1, 5),
+      activistScore: getRandomInt(1, 3),
+      lobbyistCategory: getRandomInt(1, 3),
+      lobbyistScore: getRandomInt(1, 5),
     });
-}
+  }
+  return bills;
+};

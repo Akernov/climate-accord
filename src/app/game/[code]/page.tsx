@@ -7,11 +7,6 @@ import { useParams, useRouter } from "next/navigation";
 // useRouter allows us to redirect users to other pages
 
 import { useState, useEffect } from "react";
-// React hooks used for managing state and running side effects
-
-import BillBoard from "@/components/BillBoard";
-// Component that will display the bills being voted on in the game
-
 import { useSocket } from "@/context/SocketContext";
 // Custom hook that provides the real-time socket connection to the server
 
@@ -19,8 +14,11 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 // Supabase client used for authentication
 
 import { Player, Lobby, Bill } from "@/types/game";
-// TypeScript types describing the structure of game data
-
+import BillVotingPhase from "@/components/BillVotingPhase";
+import DiscussionPhase from "@/components/DiscussionPhase";
+import PlayerVotingPhase from "@/components/PlayerVotingPhase";
+import EndGameScreen from "@/components/EndGameScreen";
+import Timer from "@/components/Timer";
 
 export default function GamePage() {
 
@@ -109,6 +107,27 @@ export default function GamePage() {
   // Find the player object corresponding to the current user
   const currentPlayer = players.find((p) => p.userId === currentUserId);
 
+  if (lobby.status === 'ended') {
+      return (
+        <div className="relative min-h-screen mx-auto flex flex-col bg-black overflow-hidden items-center justify-center p-8">
+           <EndGameScreen lobby={lobby} currentPlayer={currentPlayer} />
+        </div>
+      );
+  }
+
+  const renderPhaseComponent = () => {
+    switch (phase) {
+      case 'Bill Voting':
+        return <BillVotingPhase lobby={lobby} currentPlayer={currentPlayer} />;
+      case 'Discussion':
+        return <DiscussionPhase lobby={lobby} currentPlayer={currentPlayer} />;
+      case 'Player Voting':
+      case 'Grace Period':
+        return <PlayerVotingPhase lobby={lobby} currentPlayer={currentPlayer} />;
+      default:
+        return <p>Waiting for the next phase...</p>;
+    }
+  };
 
   return (
     <div className="relative min-h-screen mx-auto flex flex-col bg-black overflow-hidden items-center p-8 text-gray-300">
@@ -120,35 +139,35 @@ export default function GamePage() {
         <h1 className="text-5xl font-extrabold tracking-wide text-gray-400/90">
           Climate Accord
         </h1>
+ 
+        <div className="mt-4 space-y-2">
+            <p className="text-lg">
+              Lobby Code: <b>{code}</b>
+            </p>
 
-        {/* Show the lobby code so other players can join */}
-        <p className="text-lg mt-2">
-          Lobby Code: <b>{code}</b>
-        </p>
+            <div className="flex items-center justify-center gap-4">
+                <p className="text-md">
+                    Phase: {phase}
+                </p>
+                {lobby.phaseEndTime && <Timer endTime={lobby.phaseEndTime} />}
+            </div>
 
-        {/* Display the current game phase */}
-        <p className="text-md">
-          Phase: {phase}
-        </p>
-
-        {/* Display the player's assigned role */}
-        {currentPlayer?.role && (
-          <p className="mt-3 text-xl font-semibold">
-            Your Role:{" "}
-            {currentPlayer.role === "lobbyist"
-              ? "Industrial Lobbyist 🏭"
-              : "Climate Advocate 🌱"}
-          </p>
-        )}
-
+            {currentPlayer?.role && (
+              <p className="mt-3 text-xl font-semibold">
+                Your Role:{" "}
+                {currentPlayer.role === "lobbyist"
+                  ? "Industrial Lobbyist 🏭"
+                  : "Climate Advocate 🌱"}
+              </p>
+            )}
+        </div>
       </div>
 
 
       {/* MAIN GAME BOARD AREA */}
       <div className="w-full max-w-6xl space-y-8">
 
-        {/* Component that will show the bills currently in play */}
-        <BillBoard role={currentPlayer?.role} bills={[]} />
+        {renderPhaseComponent()}
 
         {/* PLAYER LIST DISPLAY */}
         {/* Shows all players currently in the lobby */}
@@ -159,22 +178,19 @@ export default function GamePage() {
           </h2>
 
           <div className="flex flex-wrap gap-3 justify-center">
-
-            {players.map((p) => (
-
-              <div
-                key={p.userId}
-                className="bg-gray-800 px-4 py-2 rounded-lg shadow font-medium flex gap-2 items-center"
-              >
-                {p.name}
-
-                {/* Crown icon shows who the host of the lobby is */}
-                {p.userId === lobby.host && <span>👑</span>}
-
-              </div>
-
-            ))}
-
+            {players.map((p) => {
+              const isSpectator = (lobby.oustedPlayers || []).includes(p.userId);
+              return (
+                <div
+                  key={p.userId}
+                  className={`px-4 py-2 rounded-lg shadow font-medium flex gap-2 items-center ${isSpectator ? 'bg-gray-900 border border-gray-700 text-gray-600 line-through' : 'bg-gray-800 text-white'}`}
+                >
+                  {p.name} 
+                  {p.userId === lobby.host && <span>👑</span>}
+                  {isSpectator && <span className="text-xs ml-1 no-underline uppercase tracking-widest font-black text-gray-500">Ousted</span>}
+                </div>
+              );
+            })}
           </div>
         </div>
 

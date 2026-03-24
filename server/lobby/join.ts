@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { Server, Socket } from "socket.io";
-import { DB } from "../db.js";
+import { GameManager } from "../game/manager.js";
 import { withValidation, broadcastLobbyState, getSocketUser, normalizeCode, normalizeName, getDisplayNameFromUser } from "../util.js";
 
 export const joinLobbySchema = z.object({
@@ -8,7 +8,7 @@ export const joinLobbySchema = z.object({
   playerName: z.string().optional(),
 });
 
-export function joinLobby({ io, socket, db }: { io: Server, socket: Socket, db: DB }) {
+export function joinLobby({ io, socket, manager }: { io: Server, socket: Socket, manager: GameManager }) {
     return withValidation(joinLobbySchema, async (data) => {
         const user = getSocketUser(socket);
         if (!user) throw new Error("Unauthorized.");
@@ -18,29 +18,31 @@ export function joinLobby({ io, socket, db }: { io: Server, socket: Socket, db: 
         const fallbackName = getDisplayNameFromUser(user);
         const name = requestedName || fallbackName;
 
-        const game = await db.getGameByCode({ code });
+        const game = manager.getGame(code);
         if (!game) throw new Error("Lobby not found");
 
         if (game.status !== 'waiting') {
             throw new Error("Game already started.");
         }
 
-        const players = await db.getPlayersInGame({ gameId: game.game_id });
-        const playerExists = players.find(p => p.userId === user.id);
+        const playerExists = game.players.find(p => p.userId === user.id);
 
         if (!playerExists) {
-            const nameAlreadyTaken = players.some((p) => p.name === name);
+            const nameAlreadyTaken = game.players.some((p) => p.name === name);
             if (nameAlreadyTaken) throw new Error("That display name is already in use in this lobby.");
-
-            if (players.length >= game.max_players) {
+            
+            if (game.players.length >= game.maxPlayers) {
                 throw new Error("This lobby is full.");
             }
 
-            await db.addPlayerToGame({ gameId: game.game_id, userId: user.id, displayName: name });
+            manager.updateGame(code, {
+                players: [...game.players, { userId: user.id, name, isAnonymous: user.is_anonymous || false }]
+            });
+            manager.assignPlayerToLobby(user.id, code);
         }
 
         socket.join(code);
-        await broadcastLobbyState(io, code, game.game_id, db);
+        await broadcastLobbyState(io, code, manager);
 
         return { lobbyCode: code };
     });

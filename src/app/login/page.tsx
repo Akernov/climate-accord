@@ -13,7 +13,9 @@ function getSafeNextPath(rawPath: string | null): string {
   return rawPath.startsWith("/") ? rawPath : "/";
 }
 
-export default function LoginPage() {
+import { Suspense } from "react";
+
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = getSafeNextPath(searchParams.get("next"));
@@ -212,5 +214,13 @@ export default function LoginPage() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-black">Loading...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }

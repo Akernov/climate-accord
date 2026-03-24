@@ -5,7 +5,9 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { DB } from "./db.js";
+import { GameManager } from "./game/manager.js";
 import { readBearerToken, verifyAccessToken } from "./supabase/verifier.js";
+import { trackSocket, untrackSocket } from "./util.js";
 
 import { createLobby } from './lobby/create.js';
 import { joinLobby } from './lobby/join.js';
@@ -13,9 +15,9 @@ import { getLobbyState } from './lobby/get-state.js';
 import { leaveLobby } from './lobby/leave.js';
 import { kickPlayer } from './lobby/kick.js';
 import { startGame } from './lobby/start-game.js';
-
-import { generateBills } from './game/generateBills.js';
-
+import { voteBill } from './game/vote.js';
+import { callPlayerVote } from './game/call-player-vote.js';
+import { votePlayer } from './game/vote-player.js';
 
 dotenv.config();
 
@@ -45,6 +47,7 @@ export async function createApp(httpServer: http.Server, config: AppConfig) {
     });
 
     const db = new DB(supabase);
+    const manager = new GameManager();
 
     // Auth Middleware
     io.use(async (socket, next) => {
@@ -78,18 +81,33 @@ export async function createApp(httpServer: http.Server, config: AppConfig) {
         console.log('--- New Connection ---');
         console.log('User connected:', socket.id);
 
-        socket.on("lobby:create", createLobby({ io, socket, db }));
-        socket.on("lobby:join", joinLobby({ io, socket, db }));
-        socket.on("lobby:get_state", getLobbyState({ io, socket, db }));
-        socket.on("lobby:leave", leaveLobby({ io, socket, db }));
-        socket.on("lobby:kick_player", kickPlayer({ io, socket, db }));
-        socket.on("lobby:start_game", startGame({ io, socket, db }));
-        
-        socket.on("game:generate_bills", generateBills({ io, socket, db }));
+        const user = socket.data.user;
+        if (user) {
+            trackSocket(user.id, socket.id);
+            // Auto-reconnect if they are already in an active game memory map
+            const activeCode = manager.getPlayerLobby(user.id);
+            if (activeCode) {
+                console.log(`Reconnecting user ${user.id} to lobby ${activeCode}`);
+                socket.join(activeCode);
+            }
+        }
+
+        socket.on("lobby:create", createLobby({ io, socket, manager }));
+        socket.on("lobby:join", joinLobby({ io, socket, manager }));
+        socket.on("lobby:get_state", getLobbyState({ io, socket, manager }));
+        socket.on("lobby:leave", leaveLobby({ io, socket, manager }));
+        socket.on("lobby:kick_player", kickPlayer({ io, socket, manager }));
+        socket.on("lobby:start_game", startGame({ io, socket, db, manager }));
+        socket.on("game:vote_bill", voteBill({ io, socket, manager }));
+        socket.on("game:call_player_vote", callPlayerVote({ io, socket, manager, db }));
+        socket.on("game:vote_player", votePlayer({ io, socket, manager }));
 
         // Graceful disconnect logic could be implemented if tracking presence via connection state
         socket.on('disconnect', () => {
             console.log('User disconnected:', socket.id);
+            if (user) {
+                untrackSocket(user.id);
+            }
         });
     });
 
@@ -106,7 +124,7 @@ const PORT = process.env.PORT || 3001;
 
 const config = {
     cors: {
-        origin: "http://localhost:3000",
+        origin: process.env.CORS_ORIGIN || "http://localhost:3000",
         methods: ["GET", "POST"]
     }
 };
