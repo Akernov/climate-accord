@@ -1,14 +1,14 @@
 import { z } from "zod";
 import { Server, Socket } from "socket.io";
-import { GameManager } from "../game/manager.js";
-import { withValidation, getSocketUser, clampMaxPlayers, getDisplayNameFromUser, normalizeName } from "../util.js";
+import { IServerState } from "../state.js";
+import { withValidation, getSocketUser, clampMaxPlayers, getDisplayNameFromUser, normalizeName, abandonOldLobby } from "../util.js";
 
 export const createLobbySchema = z.object({
     playerName: z.string().optional(),
     maxPlayers: z.number().optional(),
 });
 
-export function createLobby({ io, socket, manager }: { io: Server, socket: Socket, manager: GameManager }) {
+export function createLobby({ io, socket, state }: { io: Server, socket: Socket, state: IServerState }) {
     return withValidation(createLobbySchema, async (data) => {
         const user = getSocketUser(socket);
         if (!user) throw new Error("Unauthorized.");
@@ -21,8 +21,10 @@ export function createLobby({ io, socket, manager }: { io: Server, socket: Socke
 
         const newCode = Math.random().toString(36).substring(2, 6).toUpperCase();
 
+        await abandonOldLobby(io, socket, state, user.id);
+
         // Initialize Memory Map
-        manager.initializeGame(newCode, {
+        state.initializeGame(newCode, {
             code: newCode,
             host: user.id,
             players: [{ userId: user.id, name, isAnonymous: user.is_anonymous || false, isSpectator: false }],
@@ -32,7 +34,7 @@ export function createLobby({ io, socket, manager }: { io: Server, socket: Socke
             bills: [],
         });
 
-        manager.assignPlayerToLobby(user.id, newCode);
+        state.assignPlayerToLobby(user.id, newCode);
 
         socket.join(newCode);
 

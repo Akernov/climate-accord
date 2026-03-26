@@ -2,44 +2,29 @@
 
 import { useState, useEffect } from 'react';
 
-const calculateTimeLeft = (endTime: number) => {
-    const difference = endTime - Date.now();
-    let timeLeft = {
-        minutes: 0,
-        seconds: 0,
-    };
-
-    if (difference > 0) {
-        timeLeft = {
-            minutes: Math.floor((difference / 1000 / 60) % 60),
-            seconds: Math.floor((difference / 1000) % 60),
-        };
-    }
-
-    return timeLeft;
-};
-
 type Props = {
     endTime: number;
 }
 
 const Timer: React.FC<Props> = ({ endTime }) => {
-    const [timeLeft, setTimeLeft] = useState(calculateTimeLeft(endTime));
+    const [timeLeft, setTimeLeft] = useState(Math.max(0, endTime - Date.now()));
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setTimeLeft(calculateTimeLeft(endTime));
+        // Automatically sync to the exact clock every second
+        const timer = setInterval(() => {
+            setTimeLeft(Math.max(0, endTime - Date.now()));
         }, 1000);
 
-        // Clear the interval on component unmount
-        return () => clearTimeout(timer);
-    }); // No dependency array, so it runs on every render, which is what we want for a live timer
+        return () => clearInterval(timer);
+    }, [endTime]);
 
-    const seconds = String(timeLeft.seconds).padStart(2, '0');
+    // Parse the display data inline during the render frame
+    const minutes = Math.floor((timeLeft / 1000 / 60) % 60);
+    const seconds = String(Math.floor((timeLeft / 1000) % 60)).padStart(2, '0');
 
     return (
         <div className="text-2xl font-mono">
-            <span>{timeLeft.minutes}</span>:<span>{seconds}</span>
+            <span>{minutes}</span>:<span>{seconds}</span>
         </div>
     );
 };

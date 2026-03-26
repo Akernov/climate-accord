@@ -1,18 +1,17 @@
 import { z } from "zod";
 import { Server, Socket } from "socket.io";
 import { DB } from "../db.js";
-import { GameManager } from "../game/manager.js";
+import { IServerState } from "../state.js";
 import { withValidation, getSocketUser, normalizeCode, assignRoles, broadcastLobbyState } from "../util.js";
 import { generateBills } from "../game/generateBills.js";
 import { transitionToNextPhase } from "../game/next-phase.js";
+import { PHASE_DURATIONS } from "../game/phases.js";
 
 export const startGameSchema = z.object({
   code: z.string(),
 });
 
-const PHASE_DURATION_MS = 20 * 1000; // 20 seconds
-
-export function startGame({ io, socket, db, manager }: { io: Server, socket: Socket, db: DB, manager: GameManager }) {
+export function startGame({ io, socket, db, state: manager }: { io: Server, socket: Socket, db: DB, state: IServerState }) {
     return withValidation(startGameSchema, async (data) => {
         const user = getSocketUser(socket);
         if (!user) throw new Error("Unauthorized.");
@@ -47,7 +46,7 @@ export function startGame({ io, socket, db, manager }: { io: Server, socket: Soc
             phase: 'Discussion',
             players: assignedRolesPlayers,
             bills: bills,
-            phaseEndTime: Date.now() + PHASE_DURATION_MS,
+            phaseEndTime: Date.now() + PHASE_DURATIONS['Discussion'],
             votes: {},
             activistPoints: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
             lobbyistPoints: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
@@ -61,12 +60,14 @@ export function startGame({ io, socket, db, manager }: { io: Server, socket: Soc
         // Broadcast the initial "game started" state
         await broadcastLobbyState(io, code, manager);
         
-        console.log(`Lobby ${code} started. First phase transition in ${PHASE_DURATION_MS / 1000}s.`);
+        console.log(`Lobby ${code} started. First phase transition in ${PHASE_DURATIONS['Discussion']}ms.`);
 
         // Kick off the automatic phase transition loop
-        setTimeout(() => {
-            transitionToNextPhase({ io, manager, code, db });
-        }, PHASE_DURATION_MS);
+        const timeout = setTimeout(() => {
+            transitionToNextPhase({ io, state: manager, code, db });
+        }, PHASE_DURATIONS['Discussion']);
+        
+        manager.setPhaseTimer(code, timeout);
 
         return { success: true };
     });
