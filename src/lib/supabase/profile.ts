@@ -1,3 +1,4 @@
+import { stringToBase64URL } from "@supabase/ssr";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
 function deriveDisplayName(user: User, preferredDisplayName?: string): string {
@@ -41,4 +42,41 @@ export async function ensureProfileExists(
   );
 
   return { error: error?.message ?? null };
+}
+
+export type MatchRecord = {
+  game_id: string;
+  role: "advocate" | "lobbyist";
+  winner_faction: "advocate" | "lobbyist";
+  created_at: string;
+}
+
+export async function getUserMatchHistory(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<{ matches: MatchRecord[]; error: string | null }> {
+  const { data, error } = await supabase
+    .from("game_players")
+    .select(`
+      game_id, 
+      role, 
+      created_at,
+      games!inner(winner_faction)`)
+    .eq("user_id", userId)
+    .not("games.winner_faction", "is", null)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[getUserMatchHistory] Failed:", error);
+    return { matches: [], error: error.message };
+  }
+
+  const matches: MatchRecord[] = data.map((row: any) => ({
+    game_id: row.game_id,
+    role: row.role as "advocate" | "lobbyist",
+    winner_faction: row.games?.winner_faction as "advocate" | "lobbyist",
+    created_at: row.created_at,
+  }));
+
+  return { matches, error: null };
 }

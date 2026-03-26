@@ -7,7 +7,7 @@ export function handlePlayerVotingResults(game: Lobby, updates: Partial<Lobby>, 
     for (const targetId of Object.values(pVotes)) {
         counts[targetId] = (counts[targetId] || 0) + 1;
     }
-    
+
     let oustedId = null;
     let max = 0;
     for (const [tId, c] of Object.entries(counts)) {
@@ -53,8 +53,8 @@ export function handleBillVotingResults(game: Lobby, updates: Partial<Lobby>, ac
 export function evaluateWinConditions(game: Lobby, updates: Partial<Lobby>, activistPoints: Record<number, number>, lobbyistPoints: Record<number, number>, oustedSet: Set<string>) {
     // Evaluate Win Conditions
     // 1. Point Based conditions
-    const activistsWinPoints = [1,2,3,4,5].every(cat => activistPoints[cat] >= 5);
-    const lobbyistsWinPoints = [1,2,3,4,5].filter(cat => lobbyistPoints[cat] >= 7).length >= 3;
+    const activistsWinPoints = [1, 2, 3, 4, 5].every(cat => activistPoints[cat] >= 5);
+    const lobbyistsWinPoints = [1, 2, 3, 4, 5].filter(cat => lobbyistPoints[cat] >= 7).length >= 3;
 
     // 2. Population Based conditions (Ousted players don't count)
     const activePlayers = game.players.filter(p => !oustedSet.has(p.userId));
