@@ -53,4 +53,23 @@ export class DB {
             if (error) throw new Error(error.message);
         }
     }
+
+    async addLoss(userID: string) {
+        // Get current wins
+        const { data, error } = await this.supabase
+            .from('profiles')
+            .select('losses')
+            .eq('user_id', userID)
+            .single();
+        
+        if (data) {
+            // Increment current wins by one
+            const { error } = await this.supabase
+                .from('profiles')
+                .update({ losses: data.losses + 1 })
+                .eq('user_id', userID);
+            
+            if (error) throw new Error(error.message);
+        }
+    }
 }
