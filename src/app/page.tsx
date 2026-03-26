@@ -64,7 +64,7 @@ export default function Home() {
 
             {/* Profile */}
             <Link
-              href="/profile"
+              href="/stats"
               className="bg-gray-800 text-white text-xl font-bold py-5 px-8 rounded-lg border-4 border-black shadow-lg hover:scale-105 hover:bg-gray-900 transition-all text-center"
             >
               MY STATS
