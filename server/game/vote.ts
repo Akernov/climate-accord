@@ -4,7 +4,7 @@ import { IServerState } from "../state.js";
 import { withValidation, getSocketUser, broadcastLobbyState } from "../util.js";
 
 export const voteBillSchema = z.object({
-  billIndex: z.number().min(0).max(10), // Assuming max a few bills
+    billIndex: z.number().min(0).max(10), // Assuming max a few bills
 });
 
 export function voteBill({ io, socket, state }: { io: Server, socket: Socket, state: IServerState }) {
@@ -18,7 +18,7 @@ export function voteBill({ io, socket, state }: { io: Server, socket: Socket, st
 
         const game = state.getGame(code);
         if (!game) throw new Error("Game not found.");
-        
+
         if (game.oustedPlayers && game.oustedPlayers.includes(user.id)) {
             throw new Error("Spectators cannot vote.");
         }
@@ -33,14 +33,11 @@ export function voteBill({ io, socket, state }: { io: Server, socket: Socket, st
         }
 
         const updatedVotes = { ...game.votes, [user.id]: data.billIndex };
-        
+
         state.updateGame(code, {
             votes: updatedVotes
         });
 
-        // We don't necessarily need to broadcast the whole state just for a vote cast,
-        // but if we want to show 'Player X has voted', we can. For now, broadcasting 
-        // silently allows clients to sync if needed.
         await broadcastLobbyState(io, code, state);
 
         return { success: true };

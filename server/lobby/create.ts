@@ -27,7 +27,7 @@ export function createLobby({ io, socket, state }: { io: Server, socket: Socket,
         state.initializeGame(newCode, {
             code: newCode,
             host: user.id,
-            players: [{ userId: user.id, name, isAnonymous: user.is_anonymous || false, isSpectator: false }],
+            players: [{ userId: user.id, name, isAnonymous: user.is_anonymous || false }],
             maxPlayers,
             phase: null,
             status: 'waiting',

@@ -41,7 +41,7 @@ export function joinLobby({ io, socket, state }: { io: Server, socket: Socket, s
             }
 
             state.updateGame(code, {
-                players: [...game.players, { userId: user.id, name, isAnonymous: user.is_anonymous || false, isSpectator: false }]
+                players: [...game.players, { userId: user.id, name, isAnonymous: user.is_anonymous || false }]
             });
             state.assignPlayerToLobby(user.id, code);
         }

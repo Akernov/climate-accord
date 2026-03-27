@@ -39,6 +39,15 @@ export function handleBillVotingResults(game: Lobby, updates: Partial<Lobby>, ac
         const winningBill = game.bills[winningBillIdx];
         updates.lastPassedBill = winningBill;
 
+        const voterNames = Object.entries(votes)
+            .filter(([userId, billIdx]) => billIdx === winningBillIdx)
+            .map(([userId]) => {
+                const player = game.players.find(p => p.userId === userId);
+                return player ? player.name : "Unknown";
+            });
+            
+        updates.lastPassedBillVoters = voterNames;
+
         if (winningBill.activistCategory) activistPoints[winningBill.activistCategory] += winningBill.activistScore;
         if (winningBill.lobbyistCategory) lobbyistPoints[winningBill.lobbyistCategory] += winningBill.lobbyistScore;
 
@@ -51,12 +60,11 @@ export function handleBillVotingResults(game: Lobby, updates: Partial<Lobby>, ac
 }
 
 export function evaluateWinConditions(game: Lobby, updates: Partial<Lobby>, activistPoints: Record<number, number>, lobbyistPoints: Record<number, number>, oustedSet: Set<string>) {
-    // Evaluate Win Conditions
     // 1. Point Based conditions
     const activistsWinPoints = [1, 2, 3, 4, 5].every(cat => activistPoints[cat] >= 5);
     const lobbyistsWinPoints = [1, 2, 3, 4, 5].filter(cat => lobbyistPoints[cat] >= 7).length >= 3;
 
-    // 2. Population Based conditions (Ousted players don't count)
+    // 2. Population Based conditions
     const activePlayers = game.players.filter(p => !oustedSet.has(p.userId));
     const activeActivists = activePlayers.filter(p => p.role === 'advocate').length;
     const activeLobbyists = activePlayers.filter(p => p.role === 'lobbyist').length;
