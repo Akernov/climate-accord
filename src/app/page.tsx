@@ -1,26 +1,62 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function Home() {
   const [showInfo, setShowInfo] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null); // null = loading
+  const supabase = useMemo(() => getSupabaseBrowserClient(), []);
+
+  // Check authentication status on mount
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (isMounted) {
+        // Treat anonymous users as not logged in for button display
+        const loggedIn = !!data.session && !data.session.user.is_anonymous;
+        setIsLoggedIn(loggedIn);
+      }
+    };
+
+    checkAuth();
+
+    // Optional: listen for auth changes to update UI reactively
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (isMounted) {
+        const loggedIn = !!session && !session.user.is_anonymous;
+        setIsLoggedIn(loggedIn);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      listener?.subscription.unsubscribe();
+    };
+  }, [supabase]);
+
+  // While loading auth status, you can show a minimal placeholder (or nothing)
+  if (isLoggedIn === null) {
+    return (
+      <div className="relative min-h-screen mx-auto flex flex-col overflow-hidden text-white">
+        <div className="absolute inset-0 bg-black/40" />
+        <div className="relative z-10 flex items-center justify-center min-h-screen">
+          <p className="text-gray-400 text-lg">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen mx-auto flex flex-col overflow-hidden text-white">
 
       {/* BACKGROUND LAYERS */}
-
-      {/* World map */}
       <div className="absolute inset-0 bg-[url('/images/worldmapbackground.png')] bg-cover bg-center opacity-15 blur-[2px]" />
-
-      {/* Green gradient overlay */}
       <div className="absolute inset-0 animate-greenPulse bg-gradient-to-br from-green-400/50 via-transparent to-transparent blur-[40px]" />
-
-      {/* Gray gradient overlay */}
       <div className="absolute inset-0 animate-grayPulse bg-gradient-to-tr from-gray-300/30 via-transparent to-transparent blur-[40px]" />
-
-      {/* Dark overlay for readability */}
       <div className="absolute inset-0 bg-black/40" />
 
       {/* MAIN CONTENT */}
@@ -31,11 +67,9 @@ export default function Home() {
           <h1 className="text-7xl font-extrabold tracking-widest text-gray-300 drop-shadow-lg">
             CLIMATE <br /> ACCORD
           </h1>
-
           <p className="mt-4 text-lg text-gray-400">
             Negotiate climate policy. Compete. Shape the future.
           </p>
-
           <p className="mt-2 text-sm text-gray-500">
             SENG 401 Group 10
           </p>
@@ -45,23 +79,26 @@ export default function Home() {
         <main className="flex flex-1 items-center justify-center">
           <div className="flex flex-col gap-6 w-[420px]">
 
-            {/* Sign Up */}
-            <Link
-              href="/signup"
-              className="bg-teal-700 text-white text-xl font-bold py-5 px-8 rounded-lg border-4 border-teal-900 shadow-lg hover:scale-105 hover:bg-teal-800 hover:shadow-[0_0_25px_rgba(20,184,166,0.6)] transition-all text-center"
-            >
-              SIGN UP
-            </Link>
+            {/* Conditionally show Sign Up / Log In when NOT logged in */}
+            {!isLoggedIn && (
+              <>
+                <Link
+                  href="/signup"
+                  className="bg-teal-700 text-white text-xl font-bold py-5 px-8 rounded-lg border-4 border-teal-900 shadow-lg hover:scale-105 hover:bg-teal-800 hover:shadow-[0_0_25px_rgba(20,184,166,0.6)] transition-all text-center"
+                >
+                  SIGN UP
+                </Link>
 
-            {/* Log In */}
-            <Link
-              href="/login"
-              className="bg-amber-700 text-white text-xl font-bold py-5 px-8 rounded-lg border-4 border-amber-900 shadow-lg hover:scale-105 hover:bg-amber-800 hover:shadow-[0_0_25px_rgba(245,158,11,0.6)] transition-all text-center"
-            >
-              LOG IN
-            </Link>
+                <Link
+                  href="/login"
+                  className="bg-amber-700 text-white text-xl font-bold py-5 px-8 rounded-lg border-4 border-amber-900 shadow-lg hover:scale-105 hover:bg-amber-800 hover:shadow-[0_0_25px_rgba(245,158,11,0.6)] transition-all text-center"
+                >
+                  LOG IN
+                </Link>
+              </>
+            )}
 
-            {/* Host Game */}
+            {/* Always visible game and info buttons */}
             <Link
               href="/create-lobby"
               className="bg-green-700 text-white text-xl font-bold py-5 px-8 rounded-lg border-4 border-green-900 shadow-lg hover:scale-105 hover:bg-green-800 hover:shadow-[0_0_25px_rgba(34,197,94,0.6)] transition-all text-center"
@@ -69,7 +106,6 @@ export default function Home() {
               HOST GAME
             </Link>
 
-            {/* Join Game */}
             <Link
               href="/join-lobby"
               className="bg-blue-700 text-white text-xl font-bold py-5 px-8 rounded-lg border-4 border-blue-900 shadow-lg hover:scale-105 hover:bg-blue-800 hover:shadow-[0_0_25px_rgba(59,130,246,0.6)] transition-all text-center"
@@ -77,7 +113,6 @@ export default function Home() {
               JOIN GAME
             </Link>
 
-            {/* Profile */}
             <Link
               href="/profile"
               className="bg-gray-800 text-white text-xl font-bold py-5 px-8 rounded-lg border-4 border-black shadow-lg hover:scale-105 hover:bg-gray-900 transition-all text-center"
@@ -85,7 +120,6 @@ export default function Home() {
               MY STATS
             </Link>
 
-            {/* How to Play */}
             <button
               onClick={() => setShowInfo(true)}
               className="bg-purple-700 text-white text-xl font-bold py-5 px-8 rounded-lg border-4 border-purple-900 shadow-lg hover:scale-105 hover:bg-purple-800 hover:shadow-[0_0_25px_rgba(168,85,247,0.6)] transition-all"
