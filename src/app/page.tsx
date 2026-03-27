@@ -53,6 +53,14 @@ export default function Home() {
               SIGN UP
             </Link>
 
+            {/* Log In */}
+            <Link
+              href="/login"
+              className="bg-amber-700 text-white text-xl font-bold py-5 px-8 rounded-lg border-4 border-amber-900 shadow-lg hover:scale-105 hover:bg-amber-800 hover:shadow-[0_0_25px_rgba(245,158,11,0.6)] transition-all text-center"
+            >
+              LOG IN
+            </Link>
+
             {/* Host Game */}
             <Link
               href="/create-lobby"
