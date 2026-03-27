@@ -35,6 +35,14 @@ export default function GamePage() {
   // State to store the current user's ID (from Supabase)
   const [currentUserId, setCurrentUserId] = useState<string>("");
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    getSupabaseBrowserClient().auth.getSession().then(({ data }) => {
+      if (!data.session) {
+        router.push('/');
+      }
+    });
+  }, [router]);
 
   useEffect(() => {
 

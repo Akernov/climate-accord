@@ -149,7 +149,7 @@ export default function Home() {
               As the game progresses, special abilities may be unlocked to help balance the game and increase strategic depth.
             </p>
             <p className="text-gray-400 mb-4">
-              The game ends when the Activists either complete all their objectives or eliminate all Lobbyists, or when the Lobbyists achieve 6 points in three objectives. The winning faction is then declared.
+              The game ends when the Activists either complete all their objectives or eliminate all Lobbyists, or when the Lobbyists achieve 7 points in three objectives. The winning faction is then declared.
             </p>
             <button
               onClick={() => setShowInfo(false)}

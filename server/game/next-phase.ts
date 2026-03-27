@@ -30,16 +30,56 @@ export async function transitionToNextPhase({ io, state, code, db }: { io: Serve
     let oustedSet = new Set(game.oustedPlayers || []);
 
     if (currentPhase === 'Discussion') {
-        // Naturally shifting out of Discussion
+        // Resolve lobbyist bill removal powerup before moving to Bill Voting
+        if ((game.activePowerups || []).includes('lobbyist_remove') && game.bills && game.bills.length > 0) {
+            const removalVotes = game.billRemovalVotes || {};
+            const counts: Record<number, number> = {};
+            for (const billIdx of Object.values(removalVotes)) {
+                counts[billIdx] = (counts[billIdx] || 0) + 1;
+            }
+
+            // Find the bill with the most votes (majority wins, ties = no removal)
+            let maxCount = 0;
+            let removedIdx: number | null = null;
+            let isTied = false;
+            for (const [idxStr, count] of Object.entries(counts)) {
+                if (count > maxCount) {
+                    maxCount = count;
+                    removedIdx = parseInt(idxStr);
+                    isTied = false;
+                } else if (count === maxCount) {
+                    isTied = true;
+                }
+            }
+
+            if (removedIdx !== null && !isTied && game.bills[removedIdx]) {
+                const updatedBills = [...game.bills];
+                updatedBills.splice(removedIdx, 1);
+                updates.bills = updatedBills;
+                updates.removedBillIndex = removedIdx;
+            } else {
+                updates.removedBillIndex = null;
+            }
+
+            // Remove lobbyist_remove from active powerups
+            updates.activePowerups = (game.activePowerups || []).filter(p => p !== 'lobbyist_remove');
+            updates.billRemovalVotes = {};
+        }
+
         newPhase = 'Bill Voting';
-        updates.callPlayerVoteIds = []; // clear any pending calls
+        updates.callPlayerVoteIds = [];
     } else if (currentPhase === 'Player Voting') {
         handlePlayerVotingResults(game, updates, oustedSet);
         newPhase = 'Grace Period';
     } else if (currentPhase === 'Grace Period') {
         newPhase = 'Bill Voting';
     } else if (currentPhase === 'Bill Voting') {
+        // Clear activist vision powerup after the Bill Voting round ends
+        if ((game.activePowerups || []).includes('activist_vision')) {
+            updates.activePowerups = (game.activePowerups || []).filter(p => p !== 'activist_vision');
+        }
         handleBillVotingResults(game, updates, activistPoints, lobbyistPoints);
+        updates.removedBillIndex = null;
         newPhase = 'Discussion';
     }
 
