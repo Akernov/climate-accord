@@ -1,6 +1,7 @@
 import React from 'react';
 import { Lobby, Player } from '@/types/game';
 import { useSocket } from "@/context/SocketContext";
+import { getCategoryDisplay } from '@/lib/categories';
 
 type Props = {
   lobby: Lobby;
@@ -47,9 +48,9 @@ const DiscussionPhase: React.FC<Props> = ({ lobby, currentPlayer }) => {
           <h3 className="text-xl font-bold text-green-400 mb-2">Recently Passed Bill</h3>
           <p className="font-semibold text-lg">{lastPassedBill.title || "Unnamed Bill"}</p>
           <div className="flex justify-center gap-6 mt-3 text-sm font-bold">
-            <span className="bg-green-900/50 text-green-300 px-3 py-1 rounded-lg">Advocate: +{lastPassedBill.activistScore} (Cat {lastPassedBill.activistCategory})</span>
+            <span className="bg-green-900/50 text-green-300 px-3 py-1 rounded-lg">Advocate: +{lastPassedBill.activistScore} ({getCategoryDisplay(lastPassedBill.activistCategory)})</span>
             {currentPlayer?.role === 'lobbyist' ? (
-               <span className="bg-red-900/50 text-red-300 px-3 py-1 rounded-lg">Lobbyist: +{lastPassedBill.lobbyistScore} (Cat {lastPassedBill.lobbyistCategory})</span>
+               <span className="bg-red-900/50 text-red-300 px-3 py-1 rounded-lg">Lobbyist: +{lastPassedBill.lobbyistScore} ({getCategoryDisplay(lastPassedBill.lobbyistCategory)})</span>
             ) : (
                <span className="bg-gray-700 text-gray-400 px-3 py-1 rounded-lg">Lobbyist: Hidden</span>
             )}
@@ -74,7 +75,7 @@ const DiscussionPhase: React.FC<Props> = ({ lobby, currentPlayer }) => {
            <ul className="space-y-2 text-sm font-semibold">
              {[1,2,3,4,5].map(cat => (
                 <li key={cat} className="flex justify-between items-center bg-gray-900 p-2 rounded">
-                  <span>Category {cat}</span>
+                  <span>{getCategoryDisplay(cat)}</span>
                   <span className={`px-2 py-0.5 rounded ${((activistPoints && activistPoints[cat]) || 0) >= 5 ? 'bg-green-600 text-white' : 'text-green-500'}`}>
                     {(activistPoints && activistPoints[cat]) || 0} / 5
                   </span>
@@ -91,7 +92,7 @@ const DiscussionPhase: React.FC<Props> = ({ lobby, currentPlayer }) => {
              <ul className="space-y-2 text-sm font-semibold">
                {[1,2,3,4,5].map(cat => (
                   <li key={cat} className="flex justify-between items-center bg-gray-900 p-2 rounded">
-                    <span>Category {cat}</span>
+                    <span>{getCategoryDisplay(cat)}</span>
                     <span className={`px-2 py-0.5 rounded ${((lobbyistPoints && lobbyistPoints[cat]) || 0) >= 7 ? 'bg-red-600 text-white' : 'text-red-500'}`}>
                       {(lobbyistPoints && lobbyistPoints[cat]) || 0} / 7
                     </span>
