@@ -8,15 +8,16 @@ const getRandomArraySlice = (array: number[]) => {
 
 export const generateBills = (): Bill[] => {
   const categories = [1, 2, 3, 4, 5];
-  const score = [1, 1, 1, 1, 1, 2, 2, 2, 3]
+  const activistScoreOptions = [1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3]
+  const lobbyistScoreOptions = [0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 3, 3]
 
   const bills: Bill[] = [];
   for (let i = 0; i < 3; i++) {
     bills.push({
       activistCategory: getRandomArraySlice(categories)[i],
-      activistScore: getRandomArraySlice(score)[i],
+      activistScore: getRandomArraySlice(activistScoreOptions)[i],
       lobbyistCategory: getRandomArraySlice(categories)[i],
-      lobbyistScore: getRandomArraySlice(score)[i],
+      lobbyistScore: getRandomArraySlice(lobbyistScoreOptions)[i],
     });
   }
   return bills;

@@ -104,11 +104,11 @@ export default function Home() {
               After each round, players may initiate a voting phase to eliminate a suspected opponent. Eliminated players can still observe and participate in discussions, but cannot vote.
 
               As the game progresses, special abilities may be unlocked to help balance the game and increase strategic depth.
-              
+
             </p>
 
             <p className="text-gray-400 mb-4">
-              The game ends when the Activists either complete all their objectives or eliminate all Lobbyists, or when the Lobbyists achieve 6 points in three objectives. The winning faction is then declared.
+              The game ends when the Activists either complete all their objectives or eliminate all Lobbyists, or when the Lobbyists achieve 7 points in three objectives. The winning faction is then declared.
             </p>
 
             <button

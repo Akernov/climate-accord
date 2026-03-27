@@ -17,6 +17,7 @@ import { startGame } from './lobby/start-game.js';
 import { voteBill } from './game/vote.js';
 import { callPlayerVote } from './game/call-player-vote.js';
 import { votePlayer } from './game/vote-player.js';
+import { voteRemoveBill } from './game/remove-bill.js';
 
 dotenv.config();
 
@@ -129,6 +130,7 @@ export async function createApp(httpServer: http.Server, config: AppConfig) {
         socket.on("game:vote_bill", voteBill({ io, socket, state }));
         socket.on("game:call_player_vote", callPlayerVote({ io, socket, state, db }));
         socket.on("game:vote_player", votePlayer({ io, socket, state }));
+        socket.on("game:vote_remove_bill", voteRemoveBill({ io, socket, state }));
 
         /**
          * On the disconnect of a user, perform a number of tasks:

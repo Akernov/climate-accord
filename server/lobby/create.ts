@@ -32,6 +32,7 @@ export function createLobby({ io, socket, state }: { io: Server, socket: Socket,
             phase: null,
             status: 'waiting',
             bills: [],
+            roundCount: 0,
         });
 
         state.assignPlayerToLobby(user.id, newCode);

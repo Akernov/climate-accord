@@ -8,7 +8,7 @@ import { useSocket } from "@/context/SocketContext";
 export default function CreateLobby() {
   const router = useRouter();
   const [playerName, setPlayerName] = useState("");
-  const [maxPlayers, setMaxPlayers] = useState(6);
+  const [maxPlayers, setMaxPlayers] = useState(4);
   const { socket } = useSocket();
 
   async function createLobby() {
@@ -99,7 +99,7 @@ export default function CreateLobby() {
               onChange={(e) => setMaxPlayers(Number(e.target.value))}
               className="w-full p-3 rounded-lg bg-gray-800 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition"
             >
-              {[5,6,7,8,9,10].map(n => (
+              {[4,5,6,7,8,9,10].map(n => (
                 <option key={n} value={n}>{n} Players</option>
               ))}
             </select>
