@@ -109,13 +109,17 @@ const DiscussionPhase: React.FC<Props> = ({ lobby, currentPlayer }) => {
                       <p className="text-xs text-green-300 font-bold">Activist (Cat {bill.activistCategory}): +{bill.activistScore}</p>
                     </div>
                   ) : (
-                    <div className="bg-gray-800 border border-gray-700 p-1.5 rounded-lg">
-                      <p className="text-xs text-gray-500 font-bold uppercase">Activist: Hidden</p>
+                    <div className="bg-green-900/15 border border-green-900 p-1.5 rounded-lg">
+                      <p className="text-xs text-green-300/50 font-bold">Activist (Cat ???): +{bill.activistScore}</p>
                     </div>
                   )}
                   {currentPlayer?.role === 'lobbyist' ? (
                     <div className="bg-red-900/30 border border-red-800 p-1.5 rounded-lg">
                       <p className="text-xs text-red-300 font-bold">Lobbyist (Cat {bill.lobbyistCategory}): {bill.lobbyistScore > 0 ? "+" : ""}{bill.lobbyistScore}</p>
+                    </div>
+                  ) : roundCount < 2 ? (
+                    <div className="bg-red-900/15 border border-red-900 p-1.5 rounded-lg">
+                      <p className="text-xs text-red-300/50 font-bold">Lobbyist (Cat ???): {bill.lobbyistScore > 0 ? "+" : ""}{bill.lobbyistScore}</p>
                     </div>
                   ) : (
                     <div className="bg-gray-800 border border-gray-700 p-1.5 rounded-lg">
@@ -135,14 +139,16 @@ const DiscussionPhase: React.FC<Props> = ({ lobby, currentPlayer }) => {
           <h3 className="text-xl font-bold text-green-400 mb-2">Recently Passed Bill</h3>
           <p className="font-semibold text-lg">{lastPassedBill.title || "Unnamed Bill"}</p>
           <div className="flex justify-center gap-6 mt-3 text-sm font-bold">
-            {/* Advocate info: hidden from lobbyists during blind rounds */}
+            {/* Advocate info: category hidden from lobbyists during blind rounds */}
             {(currentPlayer?.role === 'advocate' || roundCount >= 2) ? (
               <span className="bg-green-900/50 text-green-300 px-3 py-1 rounded-lg">Advocate: +{lastPassedBill.activistScore} (Cat {lastPassedBill.activistCategory})</span>
             ) : (
-              <span className="bg-gray-700 text-gray-400 px-3 py-1 rounded-lg">Advocate: Hidden</span>
+              <span className="bg-green-900/30 text-green-300/50 px-3 py-1 rounded-lg">Advocate: +{lastPassedBill.activistScore} (Cat ???)</span>
             )}
             {currentPlayer?.role === 'lobbyist' ? (
               <span className="bg-red-900/50 text-red-300 px-3 py-1 rounded-lg">Lobbyist: +{lastPassedBill.lobbyistScore} (Cat {lastPassedBill.lobbyistCategory})</span>
+            ) : roundCount < 2 ? (
+              <span className="bg-red-900/30 text-red-300/50 px-3 py-1 rounded-lg">Lobbyist: {lastPassedBill.lobbyistScore > 0 ? "+" : ""}{lastPassedBill.lobbyistScore} (Cat ???)</span>
             ) : (
               <span className="bg-gray-700 text-gray-400 px-3 py-1 rounded-lg">Lobbyist: Hidden</span>
             )}
