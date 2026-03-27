@@ -175,7 +175,7 @@ const PORT = process.env.PORT || 3001;
 
 const config = {
     cors: {
-        origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+        origin: "*",
         methods: ["GET", "POST"]
     }
 };
