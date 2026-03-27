@@ -68,18 +68,28 @@ export default function LobbyPage() {
   useEffect(() => {
     if (!socket || !code || !isConnected) return;
 
-    socket.emit(
-      "lobby:get_state",
-      { code },
-      (res: { status: "SUCCESS" | "ERROR"; error?: string; data?: Lobby }) => {
-        if (res.status === "ERROR") {
-          console.error(res.error);
-          router.push("/");
-        } else if (res.data) {
-          setLobby(res.data);
+    const fetchState = () => {
+      socket.emit(
+        "lobby:get_state",
+        { code },
+        (res: { status: "SUCCESS" | "ERROR"; error?: string; data?: Lobby }) => {
+          if (res.status === "ERROR") {
+            console.error(res.error);
+            router.push("/");
+          } else if (res.data) {
+            setLobby(res.data);
+          }
         }
-      }
-    );
+      );
+    };
+
+    // Fetch on initial connect and on every reconnection
+    fetchState();
+    socket.on("connect", fetchState);
+
+    return () => {
+      socket.off("connect", fetchState);
+    };
   }, [socket, code, isConnected, router]);
 
   if (!lobby) {
