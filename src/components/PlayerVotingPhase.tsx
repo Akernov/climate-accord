@@ -22,6 +22,21 @@ const PlayerVotingPhase: React.FC<Props> = ({ lobby, currentPlayer }) => {
   };
 
   if (lobby.phase === 'Grace Period') {
+      const isBlindRound = lobby.roundCount < 2;
+
+      if (isBlindRound) {
+        return (
+          <div className="bg-gray-900 p-8 rounded-2xl shadow-xl border-4 text-white border-yellow-700 flex flex-col items-center">
+               <h2 className="text-4xl font-black mb-4 text-center text-yellow-400 uppercase tracking-widest">Blind Voting Round</h2>
+               <p className="text-xl text-gray-300 font-bold mb-6">Round {lobby.roundCount + 1} of 2 — Voting begins shortly.</p>
+               <div className="bg-black border border-yellow-800 p-6 rounded-xl">
+                   <p className="text-lg text-yellow-300 font-bold tracking-wider text-center">🔒 No discussion allowed during blind rounds</p>
+               </div>
+               <p className="mt-8 text-gray-500 uppercase tracking-widest font-bold">Preparing next vote...</p>
+          </div>
+        );
+      }
+
       const oustedPlayerName = lobby.players.find(p => p.userId === lobby.lastOustedPlayer)?.name || "Nobody";
       
       return (
