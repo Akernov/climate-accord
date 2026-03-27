@@ -30,7 +30,8 @@ const BillVotingPhase: React.FC<Props> = ({ lobby, currentPlayer }) => {
 
   return (
     <div className="bg-gray-900 p-8 rounded-2xl shadow-xl border-4 text-white border-gray-700">
-      <h2 className="text-3xl font-black mb-6 text-center text-[var(--show-orange)] uppercase tracking-wider">Vote on Bills</h2>
+      <h2 className="text-3xl font-black mb-2 text-center text-[var(--show-orange)] uppercase tracking-wider">Vote on Bills</h2>
+      <p className="text-center text-red-500 font-bold uppercase tracking-widest text-sm mb-6">🚫 No Communication Allowed</p>
 
       {hasVision && (
         <div className="mb-4 p-3 rounded-xl bg-yellow-900/40 border border-yellow-600 text-center">
