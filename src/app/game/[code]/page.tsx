@@ -186,14 +186,29 @@ export default function GamePage() {
           <div className="flex flex-wrap gap-3 justify-center">
             {players.map((p) => {
               const isSpectator = (lobby.oustedPlayers || []).includes(p.userId);
+              const isCurrentPlayer = p.userId === currentUserId;
+              
               return (
                 <div
                   key={p.userId}
-                  className={`px-4 py-2 rounded-lg shadow font-medium flex gap-2 items-center ${isSpectator ? 'bg-gray-900 border border-gray-700 text-gray-600 line-through' : 'bg-gray-800 text-white'}`}
+                  className={`px-4 py-2 rounded-lg shadow font-medium flex gap-2 items-center 
+                    ${isSpectator 
+                      ? 'bg-gray-900 border border-gray-700 text-gray-600 line-through' 
+                      : isCurrentPlayer 
+                        ? 'bg-cyan-800 border border-cyan-400 text-white shadow-[0_0_8px_rgba(34,211,238,0.5)]' 
+                        : 'bg-gray-800 text-white'
+                    }`}
                 >
                   {p.name}
-                  {p.userId === lobby.host && <span>👑</span>}
-                  {isSpectator && <span className="text-xs ml-1 no-underline uppercase tracking-widest font-black text-gray-500">Ousted</span>}
+                  {p.userId === lobby.host && <span className="ml-1">👑</span>}
+                  {isCurrentPlayer && !isSpectator && (
+                    <span className="text-xs ml-1 text-cyan-300 font-bold">(You)</span>
+                  )}
+                  {isSpectator && (
+                    <span className="text-xs ml-1 no-underline uppercase tracking-widest font-black text-gray-500">
+                      Ousted
+                    </span>
+                  )}
                 </div>
               );
             })}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Lobby, Player } from '@/types/game';
 import { useSocket } from "@/context/SocketContext";
+import { getCategoryDisplay } from '@/lib/categories';
 
 type Props = {
   lobby: Lobby;
@@ -141,7 +142,7 @@ const DiscussionPhase: React.FC<Props> = ({ lobby, currentPlayer }) => {
           <div className="flex justify-center gap-6 mt-3 text-sm font-bold">
             {/* Advocate info: category hidden from lobbyists during blind rounds */}
             {(currentPlayer?.role === 'advocate' || roundCount >= 2) ? (
-              <span className="bg-green-900/50 text-green-300 px-3 py-1 rounded-lg">Advocate: +{lastPassedBill.activistScore} (Cat {lastPassedBill.activistCategory})</span>
+              <span className="bg-green-900/50 text-green-300 px-3 py-1 rounded-lg">Advocate: +{lastPassedBill.activistScore} ({getCategoryDisplay(lastPassedBill.activistCategory)})</span>
             ) : (
               <span className="bg-green-900/30 text-green-300/50 px-3 py-1 rounded-lg">Advocate: +{lastPassedBill.activistScore} (Cat ???)</span>
             )}
@@ -176,12 +177,12 @@ const DiscussionPhase: React.FC<Props> = ({ lobby, currentPlayer }) => {
               const hiddenPts = (currentPlayer?.role === 'advocate' && hiddenActivistPoints) ? (hiddenActivistPoints[cat] || 0) : 0;
               const displayPts = publicPts + hiddenPts;
               return (
-              <li key={cat} className="flex justify-between items-center bg-gray-900 p-2 rounded">
-                <span>Category {cat}</span>
-                <span className={`px-2 py-0.5 rounded ${displayPts >= 5 ? 'bg-green-600 text-white' : 'text-green-500'}`}>
-                  {displayPts} / 5{hiddenPts > 0 ? ` (${hiddenPts} hidden)` : ''}
-                </span>
-              </li>
+                <li key={cat} className="flex justify-between items-center bg-gray-900 p-2 rounded">
+                  <span>{getCategoryDisplay(cat)}</span>
+                  <span className={`px-2 py-0.5 rounded ${displayPts >= 5 ? 'bg-green-600 text-white' : 'text-green-500'}`}>
+                    {displayPts} / 5{hiddenPts > 0 ? ` (${hiddenPts} hidden)` : ''}
+                  </span>
+                </li>
               );
             })}
           </ul>
@@ -198,12 +199,12 @@ const DiscussionPhase: React.FC<Props> = ({ lobby, currentPlayer }) => {
                 const hiddenPts = (hiddenLobbyistPoints && hiddenLobbyistPoints[cat]) || 0;
                 const displayPts = publicPts + hiddenPts;
                 return (
-                <li key={cat} className="flex justify-between items-center bg-gray-900 p-2 rounded">
-                  <span>Category {cat}</span>
-                  <span className={`px-2 py-0.5 rounded ${displayPts >= 7 ? 'bg-red-600 text-white' : 'text-red-500'}`}>
-                    {displayPts} / 7{hiddenPts > 0 ? ` (${hiddenPts} hidden)` : ''}
-                  </span>
-                </li>
+                  <li key={cat} className="flex justify-between items-center bg-gray-900 p-2 rounded">
+                    <span>{getCategoryDisplay(cat)}</span>
+                    <span className={`px-2 py-0.5 rounded ${displayPts >= 7 ? 'bg-red-600 text-white' : 'text-red-500'}`}>
+                      {displayPts} / 7{hiddenPts > 0 ? ` (${hiddenPts} hidden)` : ''}
+                    </span>
+                  </li>
                 );
               })}
             </ul>
