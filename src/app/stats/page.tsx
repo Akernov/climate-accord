@@ -4,8 +4,8 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useState, useEffect } from 'react'
 import { useRouter } from "next/navigation";
 import { useSocket } from "@/context/SocketContext";
-import { getUserMatchHistory } from "../../lib/supabase/profile.js";
-import { MatchRecord } from "../../lib/supabase/profile.js";
+import { getUserMatchHistory } from "../../lib/supabase/profile";
+import { MatchRecord } from "../../lib/supabase/profile";
 
 export default function UserStats() {
     /*const [wins, setWins] = useState(null)
