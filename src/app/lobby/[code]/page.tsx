@@ -16,6 +16,15 @@ export default function LobbyPage() {
   const [lobby, setLobby] = useState<Lobby | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string>("");
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    getSupabaseBrowserClient().auth.getSession().then(({ data }) => {
+      if (!data.session) {
+        router.push('/');
+      }
+    });
+  }, [router]);
+
   useEffect(() => {
     if (lobby?.status === 'started') {
       router.push(`/game/${code}`);

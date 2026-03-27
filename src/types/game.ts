@@ -30,6 +30,12 @@ export type Lobby = {
   oustedPlayers?: string[];
   playerVotes?: Record<string, string>;
   lastOustedPlayer?: string | null;
+  roundCount: number;
+  hiddenActivistPoints?: Record<number, number>;
+  hiddenLobbyistPoints?: Record<number, number>;
+  activePowerups?: ('activist_vision' | 'lobbyist_remove')[];
+  billRemovalVotes?: Record<string, number>;
+  removedBillIndex?: number | null;
 };
 
 export type Bill = {

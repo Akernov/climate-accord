@@ -8,7 +8,7 @@ import { transitionToNextPhase } from "../game/next-phase.js";
 import { PHASE_DURATIONS } from "../game/phases.js";
 
 export const startGameSchema = z.object({
-  code: z.string(),
+    code: z.string(),
 });
 
 export function startGame({ io, socket, db, state: manager }: { io: Server, socket: Socket, db: DB, state: IServerState }) {
@@ -55,18 +55,24 @@ export function startGame({ io, socket, db, state: manager }: { io: Server, sock
             oustedPlayers: [],
             playerVotes: {},
             lastOustedPlayer: null,
+            roundCount: 0,
+            hiddenActivistPoints: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+            hiddenLobbyistPoints: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+            activePowerups: [],
+            billRemovalVotes: {},
+            removedBillIndex: null,
         });
 
         // Broadcast the initial "game started" state
         await broadcastLobbyState(io, code, manager);
-        
+
         console.log(`Lobby ${code} started. First phase transition in ${PHASE_DURATIONS['Discussion']}ms.`);
 
         // Kick off the automatic phase transition loop
         const timeout = setTimeout(() => {
             transitionToNextPhase({ io, state: manager, code, db });
         }, PHASE_DURATIONS['Discussion']);
-        
+
         manager.setPhaseTimer(code, timeout);
 
         return { success: true };
