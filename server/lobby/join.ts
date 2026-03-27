@@ -1,14 +1,14 @@
 import { z } from "zod";
 import { Server, Socket } from "socket.io";
-import { GameManager } from "../game/manager.js";
-import { withValidation, broadcastLobbyState, getSocketUser, normalizeCode, normalizeName, getDisplayNameFromUser } from "../util.js";
+import { IServerState } from "../state.js";
+import { withValidation, broadcastLobbyState, getSocketUser, normalizeCode, normalizeName, getDisplayNameFromUser, abandonOldLobby } from "../util.js";
 
 export const joinLobbySchema = z.object({
     code: z.string(),
     playerName: z.string().optional(),
 });
 
-export function joinLobby({ io, socket, manager }: { io: Server, socket: Socket, manager: GameManager }) {
+export function joinLobby({ io, socket, state }: { io: Server, socket: Socket, state: IServerState }) {
     return withValidation(joinLobbySchema, async (data) => {
         const user = getSocketUser(socket);
         if (!user) throw new Error("Unauthorized.");
@@ -18,7 +18,12 @@ export function joinLobby({ io, socket, manager }: { io: Server, socket: Socket,
         const fallbackName = getDisplayNameFromUser(user);
         const name = requestedName || fallbackName;
 
-        const game = manager.getGame(code);
+        const oldCode = state.getPlayerLobby(user.id);
+        if (oldCode && oldCode !== code) {
+            await abandonOldLobby(io, socket, state, user.id);
+        }
+
+        const game = state.getGame(code);
         if (!game) throw new Error("Lobby not found");
 
         if (game.status !== 'waiting') {
@@ -35,14 +40,14 @@ export function joinLobby({ io, socket, manager }: { io: Server, socket: Socket,
                 throw new Error("This lobby is full.");
             }
 
-            manager.updateGame(code, {
-                players: [...game.players, { userId: user.id, name, isAnonymous: user.is_anonymous || false, isSpectator: false }]
+            state.updateGame(code, {
+                players: [...game.players, { userId: user.id, name, isAnonymous: user.is_anonymous || false }]
             });
-            manager.assignPlayerToLobby(user.id, code);
+            state.assignPlayerToLobby(user.id, code);
         }
 
         socket.join(code);
-        await broadcastLobbyState(io, code, manager);
+        await broadcastLobbyState(io, code, state);
 
         return { lobbyCode: code };
     });

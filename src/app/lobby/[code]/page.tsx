@@ -9,7 +9,7 @@ import { Lobby } from "@/types/game";
 export default function LobbyPage() {
   const router = useRouter();
   const params = useParams();
-  const { socket } = useSocket();
+  const { socket, isConnected } = useSocket();
 
   const code = params?.code as string;
 
@@ -45,6 +45,20 @@ export default function LobbyPage() {
     socket.on("lobby:kick_player", onKicked);
     socket.on("error_message", onError);
 
+    getSupabaseBrowserClient().auth.getUser().then(({ data }) => {
+      if (data.user) setCurrentUserId(data.user.id);
+    });
+
+    return () => {
+      socket.off("lobby:updated", onLobbyUpdated);
+      socket.off("lobby:kick_player", onKicked);
+      socket.off("error_message", onError);
+    };
+  }, [socket, code, router, currentUserId]);
+
+  useEffect(() => {
+    if (!socket || !code || !isConnected) return;
+
     socket.emit(
       "lobby:get_state",
       { code },
@@ -57,19 +71,8 @@ export default function LobbyPage() {
         }
       }
     );
+  }, [socket, code, isConnected, router]);
 
-    getSupabaseBrowserClient().auth.getUser().then(({ data }) => {
-      if (data.user) setCurrentUserId(data.user.id);
-    });
-
-    return () => {
-      socket.off("lobby:updated", onLobbyUpdated);
-      socket.off("lobby:kick_player", onKicked);
-      socket.off("error_message", onError);
-    };
-  }, [socket, code, router, currentUserId]);
-
-  // LOADING SCREEN
   if (!lobby) {
     return (
       <div className="relative min-h-screen flex items-center justify-center text-white">

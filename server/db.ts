@@ -34,4 +34,5 @@ export class DB {
 
         if (error) throw new Error(error.message);
     }
+
 }

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { Server, Socket } from "socket.io";
-import { GameManager } from "../game/manager.js";
+import { IServerState } from "../state.js";
 import { withValidation, broadcastLobbyState, getSocketUser, normalizeCode } from "../util.js";
 
 export const kickPlayerSchema = z.object({
@@ -8,7 +8,7 @@ export const kickPlayerSchema = z.object({
     targetID: z.string()
 });
 
-export function kickPlayer({ io, socket, manager }: { io: Server, socket: Socket, manager: GameManager }) {
+export function kickPlayer({ io, socket, state }: { io: Server, socket: Socket, state: IServerState }) {
     return withValidation(kickPlayerSchema, async (data) => {
         const user = getSocketUser(socket);
         if (!user) throw new Error("Unauthorized.");
@@ -16,7 +16,7 @@ export function kickPlayer({ io, socket, manager }: { io: Server, socket: Socket
         const code = normalizeCode(data.code);
         const targetID = data.targetID.trim();
 
-        const game = manager.getGame(code);
+        const game = state.getGame(code);
         if (!game) throw new Error("Lobby not found");
 
         if (game.host !== user.id) {
@@ -28,14 +28,14 @@ export function kickPlayer({ io, socket, manager }: { io: Server, socket: Socket
         if (!playerToKick) throw new Error("Player not found in lobby.");
         if (playerToKick.userId === user.id) throw new Error("Cannot kick yourself.");
 
-        manager.updateGame(code, {
+        state.updateGame(code, {
             players: game.players.filter(p => p.userId !== targetID)
         });
-        manager.removePlayerFromLobby(targetID);
+        state.removePlayerFromLobby(targetID);
 
         io.to(code).emit('lobby:kick_player', { targetID: playerToKick.userId });
 
-        await broadcastLobbyState(io, code, manager);
+        await broadcastLobbyState(io, code, state);
 
         return { success: true };
     });

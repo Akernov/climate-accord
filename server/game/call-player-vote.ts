@@ -1,21 +1,22 @@
 import { z } from "zod";
 import { Server, Socket } from "socket.io";
-import { GameManager } from "./manager.js";
+import { IServerState } from "../state.js";
 import { DB } from "../db.js";
 import { withValidation, getSocketUser, broadcastLobbyState } from "../util.js";
 import { transitionToNextPhase } from "./next-phase.js";
+import { PHASE_DURATIONS } from "./phases.js";
 
 export const callPlayerVoteSchema = z.object({}); // Empty payload, just calling the action
 
-export function callPlayerVote({ io, socket, manager, db }: { io: Server, socket: Socket, manager: GameManager, db: DB }) {
+export function callPlayerVote({ io, socket, state, db }: { io: Server, socket: Socket, state: IServerState, db: DB }) {
     return withValidation(callPlayerVoteSchema, async () => {
         const user = getSocketUser(socket);
         if (!user) throw new Error("Unauthorized.");
 
-        const code = manager.getPlayerLobby(user.id);
+        const code = state.getPlayerLobby(user.id);
         if (!code) throw new Error("You are not in a lobby.");
 
-        const game = manager.getGame(code);
+        const game = state.getGame(code);
         if (!game) throw new Error("Game not found.");
         if (game.phase !== 'Discussion') throw new Error("You can only call for a vote during Discussion.");
         if (game.oustedPlayers && game.oustedPlayers.includes(user.id)) throw new Error("Spectators cannot call a vote.");
@@ -30,23 +31,24 @@ export function callPlayerVote({ io, socket, manager, db }: { io: Server, socket
 
         if (callIds.length >= majority) {
             // Majority reached! Force jump to Player Voting immediately.
-            manager.updateGame(code, {
+            const duration = PHASE_DURATIONS['Player Voting'] || 20 * 1000;
+            state.updateGame(code, {
                callPlayerVoteIds: [], // Reset for next time
                phase: 'Player Voting',
-               phaseEndTime: Date.now() + (20 * 1000), // Standard 20s
+               phaseEndTime: Date.now() + duration, 
             });
-            await broadcastLobbyState(io, code, manager);
+            await broadcastLobbyState(io, code, state);
             console.log(`Lobby ${code} forces jump to Player Voting via majority.`);
 
-            // Reschedule transition logic
-            // The existing timer in memory from next-phase.ts is just a setTimeout,
-            // Next-phase checks game.phaseEndTime to verify if it's the right transition. 
-            // Better yet, we can't easily cancel standard setTimeout here unless we clear it.
-            // But we can just let 'transitionToNextPhase' run.
-            transitionToNextPhase({ io, manager, code, db }, true); // Pass 'true' to signal a forced transition
+            // Reschedule transition logic to fire when the new phase ends
+            const timeout = setTimeout(() => {
+                transitionToNextPhase({ io, state, code, db });
+            }, duration);
+            
+            state.setPhaseTimer(code, timeout);
         } else {
-            manager.updateGame(code, { callPlayerVoteIds: callIds });
-            await broadcastLobbyState(io, code, manager);
+            state.updateGame(code, { callPlayerVoteIds: callIds });
+            await broadcastLobbyState(io, code, state);
         }
 
         return { success: true };

@@ -5,9 +5,8 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { DB } from "./db.js";
-import { GameManager } from "./game/manager.js";
+import { ServerState } from "./state.js";
 import { readBearerToken, verifyAccessToken } from "./supabase/verifier.js";
-import { trackSocket, untrackSocket, isUserConnected } from "./util.js";
 
 import { createLobby } from './lobby/create.js';
 import { joinLobby } from './lobby/join.js';
@@ -26,102 +25,136 @@ interface AppConfig {
     cors: cors.CorsOptions;
 }
 
+/** 
+ * Class which creates server application for backend (runs only once)
+ * @param httpServer - HTTP server
+ * @param config - Server configuration
+ */
 export async function createApp(httpServer: http.Server, config: AppConfig) {
+    // Supabase setup
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
     if (!supabaseUrl || !supabaseServiceKey) {
         throw new Error('Supabase URL or Service Role Key missing from environment.');
     }
-
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const db = new DB(supabase);
 
+    // Express setup
     const app = express();
     // Attach express to the http server
     httpServer.on("request", app);
     app.use(cors(config.cors));
 
-    // Setup Socket.IO
+    // Socket.IO setup
     const io = new Server(httpServer, {
         cors: config.cors,
     });
 
-    const db = new DB(supabase);
-    const manager = new GameManager();
+    // Game state
+    const state = new ServerState();
 
-    // Auth Middleware
+    /** 
+     * Socket.IO middleware for authentication
+     * All users must pass through this before connecting
+     * @param socket - Socket.IO socket
+     * @param next - Socket.IO/Next middleware
+     */
     io.use(async (socket, next) => {
         try {
+            // Get token from Socket.IO handshake auth (via frontend)
             const tokenFromAuth = typeof socket.handshake.auth?.token === "string"
                 ? socket.handshake.auth.token
                 : "";
+            // Get token from HTTP headers (via curl, etc.)
             const tokenFromHeader = readBearerToken(socket.handshake.headers.authorization);
+            // If either token is present, use it
             const accessToken = tokenFromAuth || tokenFromHeader;
 
+            // If an access token is not provided, reject the connection
             if (!accessToken) {
                 next(new Error("Unauthorized: missing access token."));
                 return;
             }
 
+            // Verify the access token
             const verified = await verifyAccessToken(accessToken);
+            // If the access token is not valid, reject the connection
             if (!verified.user) {
                 next(new Error(`Unauthorized: ${verified.error}`));
                 return;
             }
 
+            // Attach the verified user to the socket
             socket.data.user = verified.user;
+            // And accept the connection
             next();
         } catch (error) {
+            // If an error occurs, reject the connection
             const message = error instanceof Error ? error.message : "Auth verification failed.";
             next(new Error(`Unauthorized: ${message}`));
         }
     });
 
+    /** 
+     * Socket.IO connection handler
+     * @param socket - Socket.IO socket
+     */
     io.on('connection', (socket) => {
+        // Log new connections
         console.log('--- New Connection ---');
         console.log('User connected:', socket.id);
 
+        // Get user from socket data (set by auth middleware)
         const user = socket.data.user;
+
+        // If there is a valid user, track the socket
         if (user) {
-            trackSocket(user.id, socket.id);
+            state.trackSocket(user.id, socket.id);
             // Auto-reconnect if they are already in an active game memory map
-            const activeCode = manager.getPlayerLobby(user.id);
+            const activeCode = state.getPlayerLobby(user.id);
             if (activeCode) {
                 console.log(`Reconnecting user ${user.id} to lobby ${activeCode}`);
                 socket.join(activeCode);
             }
         }
 
-        socket.on("lobby:create", createLobby({ io, socket, manager }));
-        socket.on("lobby:join", joinLobby({ io, socket, manager }));
-        socket.on("lobby:get_state", getLobbyState({ io, socket, manager }));
-        socket.on("lobby:leave", leaveLobby({ io, socket, manager }));
-        socket.on("lobby:kick_player", kickPlayer({ io, socket, manager }));
-        socket.on("lobby:start_game", startGame({ io, socket, db, manager }));
+        socket.on("lobby:create", createLobby({ io, socket, state }));
+        socket.on("lobby:join", joinLobby({ io, socket, state }));
+        socket.on("lobby:get_state", getLobbyState({ io, socket, state }));
+        socket.on("lobby:leave", leaveLobby({ io, socket, state }));
+        socket.on("lobby:kick_player", kickPlayer({ io, socket, state }));
+        socket.on("lobby:start_game", startGame({ io, socket, db, state }));
 
-        socket.on("game:vote_bill", voteBill({ io, socket, manager }));
-        socket.on("game:call_player_vote", callPlayerVote({ io, socket, manager, db }));
-        socket.on("game:vote_player", votePlayer({ io, socket, manager }));
+        socket.on("game:vote_bill", voteBill({ io, socket, state }));
+        socket.on("game:call_player_vote", callPlayerVote({ io, socket, state, db }));
+        socket.on("game:vote_player", votePlayer({ io, socket, state }));
 
-        // Graceful disconnect logic to clean up abandoned lobbies
+        /**
+         * On the disconnect of a user, perform a number of tasks:
+         * 1. Untrack the socket
+         * 2. Check if the user is in an active game
+         * 3. If the user is in an active game, check if there are any other active players
+         * 4. If there are no other active players, end the game
+         */
         socket.on('disconnect', () => {
             console.log('User disconnected:', socket.id);
             if (user) {
-                untrackSocket(user.id);
-                const activeCode = manager.getPlayerLobby(user.id);
+                state.untrackSocket(user.id);
+                const activeCode = state.getPlayerLobby(user.id);
                 if (activeCode) {
                     setTimeout(() => {
-                        const lobby = manager.getGame(activeCode);
+                        const lobby = state.getGame(activeCode);
                         if (lobby) {
-                            const hasActivePlayers = lobby.players.some(p => isUserConnected(p.userId));
-
+                            // Specifically, in the lobby assigned to the code, for each player in that lobby, check if they are still connected
+                            const hasActivePlayers = lobby.players.some(p => state.isUserConnected(p.userId));
                             if (!hasActivePlayers) {
                                 console.log(`Lobby ${activeCode} has been empty for 5s. Closing game to save memory.`);
-                                lobby.players.forEach(p => manager.removePlayerFromLobby(p.userId));
-                                manager.endGame(activeCode);
+                                lobby.players.forEach(p => state.removePlayerFromLobby(p.userId));
+                                state.endGame(activeCode);
                             }
                         }
-                    }, 10000);
+                    }, 5000);
                 }
             }
         });

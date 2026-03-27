@@ -14,7 +14,7 @@ const DiscussionPhase: React.FC<Props> = ({ lobby, currentPlayer }) => {
      if (socket) socket.emit("game:call_player_vote", {});
   };
 
-  const { activistPoints, lobbyistPoints, lastPassedBill, callPlayerVoteIds, oustedPlayers } = lobby;
+  const { activistPoints, lobbyistPoints, lastPassedBill, lastPassedBillVoters, callPlayerVoteIds, oustedPlayers } = lobby;
   
   const activePlayerCount = lobby.players.length - (oustedPlayers?.length || 0);
   const majority = Math.floor(activePlayerCount / 2) + 1;
@@ -54,6 +54,12 @@ const DiscussionPhase: React.FC<Props> = ({ lobby, currentPlayer }) => {
                <span className="bg-gray-700 text-gray-400 px-3 py-1 rounded-lg">Lobbyist: Hidden</span>
             )}
           </div>
+          
+          {lastPassedBillVoters && lastPassedBillVoters.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-gray-700 text-xs text-gray-400 uppercase tracking-widest italic font-bold">
+              Supported By: <span className="text-gray-200">{lastPassedBillVoters.join(", ")}</span>
+            </div>
+          )}
         </div>
       ) : (
         <p className="text-center text-gray-400 italic">No bills have been passed yet. Discuss strategy!</p>

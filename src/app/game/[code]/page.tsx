@@ -24,7 +24,7 @@ export default function GamePage() {
 
   const router = useRouter();
   const params = useParams();
-  const { socket } = useSocket();
+  const { socket, isConnected } = useSocket();
 
   // Extract the lobby code from the URL
   const code = params?.code as string;
@@ -54,25 +54,6 @@ export default function GamePage() {
     socket.on("lobby:updated", onLobbyUpdated);
     socket.on("error_message", onError);
 
-    // Ask the server for the current lobby state
-    socket.emit(
-      "lobby:get_state", 
-      { code }, 
-      (res: { status: "SUCCESS" | "ERROR"; error?: string; data?: Lobby }) => {
-
-        // If the server reports an error, redirect back to home
-        if (res.status === "ERROR") {
-            console.error("Failed to fetch lobby state:", res.error);
-            router.push("/");
-        } 
-        
-        // If successful, store the lobby data in state
-        else if (res.status === "SUCCESS" && res.data) {
-            setLobby(res.data);
-        }
-      }
-    );
-
     // Fetch the currently authenticated user from Supabase
     // This lets us identify which player in the lobby is "us"
     getSupabaseBrowserClient().auth.getUser().then(({ data }) => {
@@ -86,6 +67,23 @@ export default function GamePage() {
     };
 
   }, [socket, code, router]);
+
+  useEffect(() => {
+    if (!socket || !code || !isConnected) return;
+
+    socket.emit(
+      "lobby:get_state",
+      { code },
+      (res: { status: "SUCCESS" | "ERROR"; error?: string; data?: Lobby }) => {
+        if (res.status === "ERROR") {
+          console.error("Failed to fetch lobby state:", res.error);
+          router.push("/");
+        } else if (res.status === "SUCCESS" && res.data) {
+          setLobby(res.data);
+        }
+      }
+    );
+  }, [socket, code, isConnected, router]);
 
 
   // Prevent rendering the game board until lobby data is loaded
@@ -108,11 +106,11 @@ export default function GamePage() {
   const currentPlayer = players.find((p) => p.userId === currentUserId);
 
   if (lobby.status === 'ended') {
-      return (
-        <div className="relative min-h-screen mx-auto flex flex-col bg-black overflow-hidden items-center justify-center p-8">
-           <EndGameScreen lobby={lobby} currentPlayer={currentPlayer} />
-        </div>
-      );
+    return (
+      <div className="relative min-h-screen mx-auto flex flex-col bg-black overflow-hidden items-center justify-center p-8">
+        <EndGameScreen lobby={lobby} currentPlayer={currentPlayer} />
+      </div>
+    );
   }
 
   const renderPhaseComponent = () => {
@@ -131,7 +129,7 @@ export default function GamePage() {
 
   return (
     <div className="relative min-h-screen mx-auto flex flex-col bg-black overflow-hidden items-center p-8 text-gray-300">
-      
+
       {/* GAME HEADER */}
       {/* Displays basic game information */}
       <div className="text-center mb-8">
@@ -139,27 +137,27 @@ export default function GamePage() {
         <h1 className="text-5xl font-extrabold tracking-wide text-gray-400/90">
           Climate Accord
         </h1>
- 
+
         <div className="mt-4 space-y-2">
-            <p className="text-lg">
-              Lobby Code: <b>{code}</b>
+          <p className="text-lg">
+            Lobby Code: <b>{code}</b>
+          </p>
+
+          <div className="flex items-center justify-center gap-4">
+            <p className="text-md">
+              Phase: {phase}
             </p>
+            {lobby.phaseEndTime && <Timer endTime={lobby.phaseEndTime} />}
+          </div>
 
-            <div className="flex items-center justify-center gap-4">
-                <p className="text-md">
-                    Phase: {phase}
-                </p>
-                {lobby.phaseEndTime && <Timer endTime={lobby.phaseEndTime} />}
-            </div>
-
-            {currentPlayer?.role && (
-              <p className="mt-3 text-xl font-semibold">
-                Your Role:{" "}
-                {currentPlayer.role === "lobbyist"
-                  ? "Industrial Lobbyist 🏭"
-                  : "Climate Advocate 🌱"}
-              </p>
-            )}
+          {currentPlayer?.role && (
+            <p className="mt-3 text-xl font-semibold">
+              Your Role:{" "}
+              {currentPlayer.role === "lobbyist"
+                ? "Industrial Lobbyist 🏭"
+                : "Climate Advocate 🌱"}
+            </p>
+          )}
         </div>
       </div>
 
@@ -185,7 +183,7 @@ export default function GamePage() {
                   key={p.userId}
                   className={`px-4 py-2 rounded-lg shadow font-medium flex gap-2 items-center ${isSpectator ? 'bg-gray-900 border border-gray-700 text-gray-600 line-through' : 'bg-gray-800 text-white'}`}
                 >
-                  {p.name} 
+                  {p.name}
                   {p.userId === lobby.host && <span>👑</span>}
                   {isSpectator && <span className="text-xs ml-1 no-underline uppercase tracking-widest font-black text-gray-500">Ousted</span>}
                 </div>

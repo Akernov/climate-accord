@@ -1,21 +1,21 @@
 import { z } from "zod";
 import { Server, Socket } from "socket.io";
-import { GameManager } from "./manager.js";
+import { IServerState } from "../state.js";
 import { withValidation, getSocketUser, broadcastLobbyState } from "../util.js";
 
 export const votePlayerSchema = z.object({
   targetUserId: z.string().uuid().or(z.string()),
 });
 
-export function votePlayer({ io, socket, manager }: { io: Server, socket: Socket, manager: GameManager }) {
+export function votePlayer({ io, socket, state }: { io: Server, socket: Socket, state: IServerState }) {
     return withValidation(votePlayerSchema, async (data) => {
         const user = getSocketUser(socket);
         if (!user) throw new Error("Unauthorized.");
 
-        const code = manager.getPlayerLobby(user.id);
+        const code = state.getPlayerLobby(user.id);
         if (!code) throw new Error("You are not in a lobby.");
 
-        const game = manager.getGame(code);
+        const game = state.getGame(code);
         if (!game) throw new Error("Game not found.");
         
         if (game.phase !== 'Player Voting') throw new Error("You can only vote for players during the Player Voting phase.");
@@ -29,11 +29,11 @@ export function votePlayer({ io, socket, manager }: { io: Server, socket: Socket
 
         const updatedVotes = { ...game.playerVotes, [user.id]: data.targetUserId };
         
-        manager.updateGame(code, {
+        state.updateGame(code, {
             playerVotes: updatedVotes
         });
 
-        await broadcastLobbyState(io, code, manager);
+        await broadcastLobbyState(io, code, state);
         return { success: true };
     });
 }
