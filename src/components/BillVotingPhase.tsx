@@ -35,9 +35,8 @@ const BillVotingPhase: React.FC<Props> = ({ lobby, currentPlayer }) => {
 
   return (
     <div className="bg-gray-900 p-8 rounded-2xl shadow-xl border-4 text-white border-gray-700">
-      <h2 className="text-3xl font-black mb-6 text-center text-[var(--show-orange)] uppercase tracking-wider">
-        Vote on Bills
-      </h2>
+      <h2 className="text-3xl font-black mb-2 text-center text-[var(--show-orange)] uppercase tracking-wider">Vote on Bills</h2>
+      <p className="text-center text-red-500 font-bold uppercase tracking-widest text-sm mb-6">🚫 No Communication Allowed</p>
 
       {hasVision && (
         <div className="mb-4 p-3 rounded-xl bg-yellow-900/40 border border-yellow-600 text-center">
@@ -75,7 +74,7 @@ const BillVotingPhase: React.FC<Props> = ({ lobby, currentPlayer }) => {
                 </h3>
 
                 <div className="space-y-2 mb-6">
-                  {/* Advocate info: hidden from lobbyists during blind rounds */}
+                  {/* Advocate info: category hidden from lobbyists during blind rounds, score always visible */}
                   {(currentPlayer?.role === 'advocate' || lobby.roundCount >= 2) ? (
                     <div className="bg-green-900/40 border border-green-800 p-2 rounded-lg">
                       <p className="text-xs text-green-200 uppercase tracking-widest font-bold">
@@ -84,16 +83,23 @@ const BillVotingPhase: React.FC<Props> = ({ lobby, currentPlayer }) => {
                       <p className="text-green-400 font-black text-lg">+{bill.activistScore} pts</p>
                     </div>
                   ) : (
-                    <div className="bg-gray-800 border border-gray-700 p-2 rounded-lg flex items-center justify-center h-[62px]">
-                      <p className="text-xs text-gray-500 uppercase font-black tracking-widest">Hidden</p>
+                    <div className="bg-green-900/20 border border-green-900 p-2 rounded-lg">
+                      <p className="text-xs text-green-200/50 uppercase tracking-widest font-bold">Activist (Cat ???)</p>
+                      <p className="text-green-400 font-black text-lg">+{bill.activistScore} pts</p>
                     </div>
                   )}
 
+                  {/* Lobbyist info: category hidden from advocates during blind rounds, score always visible */}
                   {currentPlayer?.role === 'lobbyist' || hasVision ? (
                     <div className="bg-red-900/40 border border-red-800 p-2 rounded-lg">
                       <p className="text-xs text-red-200 uppercase tracking-widest font-bold">
                         Lobbyist ({getCategoryDisplay(bill.lobbyistCategory)})
                       </p>
+                      <p className="text-red-400 font-black text-lg">{bill.lobbyistScore > 0 ? "+" : ""}{bill.lobbyistScore} pts</p>
+                    </div>
+                  ) : lobby.roundCount < 2 ? (
+                    <div className="bg-red-900/20 border border-red-900 p-2 rounded-lg">
+                      <p className="text-xs text-red-200/50 uppercase tracking-widest font-bold">Lobbyist (Cat ???)</p>
                       <p className="text-red-400 font-black text-lg">{bill.lobbyistScore > 0 ? "+" : ""}{bill.lobbyistScore} pts</p>
                     </div>
                   ) : (

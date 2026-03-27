@@ -95,20 +95,61 @@ const DiscussionPhase: React.FC<Props> = ({ lobby, currentPlayer }) => {
         </div>
       )}
 
+      {/* Upcoming Bills Preview */}
+      {bills && bills.length > 0 && (
+        <div className="bg-gray-800 p-4 rounded-xl border border-gray-600">
+          <h3 className="text-lg font-bold text-[var(--show-orange)] mb-3 text-center uppercase tracking-wider">Upcoming Bills</h3>
+          <p className="text-xs text-center text-gray-400 mb-4">Preview the bills you'll vote on next. Strategize now!</p>
+          <div className="flex justify-center flex-wrap gap-4">
+            {bills.map((bill, idx) => (
+              <div key={idx} className="w-52 border border-gray-600 p-3 rounded-xl bg-gray-900">
+                <h4 className="font-bold text-center text-md mb-3 text-gray-200">{bill.title || `Bill ${idx + 1}`}</h4>
+                <div className="space-y-2">
+                  {(currentPlayer?.role === 'advocate' || roundCount >= 2) ? (
+                    <div className="bg-green-900/30 border border-green-800 p-1.5 rounded-lg">
+                      <p className="text-xs text-green-300 font-bold">Activist (Cat {bill.activistCategory}): +{bill.activistScore}</p>
+                    </div>
+                  ) : (
+                    <div className="bg-green-900/15 border border-green-900 p-1.5 rounded-lg">
+                      <p className="text-xs text-green-300/50 font-bold">Activist (Cat ???): +{bill.activistScore}</p>
+                    </div>
+                  )}
+                  {currentPlayer?.role === 'lobbyist' ? (
+                    <div className="bg-red-900/30 border border-red-800 p-1.5 rounded-lg">
+                      <p className="text-xs text-red-300 font-bold">Lobbyist (Cat {bill.lobbyistCategory}): {bill.lobbyistScore > 0 ? "+" : ""}{bill.lobbyistScore}</p>
+                    </div>
+                  ) : roundCount < 2 ? (
+                    <div className="bg-red-900/15 border border-red-900 p-1.5 rounded-lg">
+                      <p className="text-xs text-red-300/50 font-bold">Lobbyist (Cat ???): {bill.lobbyistScore > 0 ? "+" : ""}{bill.lobbyistScore}</p>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-800 border border-gray-700 p-1.5 rounded-lg">
+                      <p className="text-xs text-gray-500 font-bold uppercase">Lobbyist: Hidden</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Last Passed Bill Section */}
       {lastPassedBill ? (
         <div className="bg-gray-800 p-4 rounded-xl border border-green-500 text-center">
           <h3 className="text-xl font-bold text-green-400 mb-2">Recently Passed Bill</h3>
           <p className="font-semibold text-lg">{lastPassedBill.title || "Unnamed Bill"}</p>
           <div className="flex justify-center gap-6 mt-3 text-sm font-bold">
-            {/* Advocate info: hidden from lobbyists during blind rounds */}
+            {/* Advocate info: category hidden from lobbyists during blind rounds */}
             {(currentPlayer?.role === 'advocate' || roundCount >= 2) ? (
               <span className="bg-green-900/50 text-green-300 px-3 py-1 rounded-lg">Advocate: +{lastPassedBill.activistScore} ({getCategoryDisplay(lastPassedBill.activistCategory)})</span>
             ) : (
-              <span className="bg-gray-700 text-gray-400 px-3 py-1 rounded-lg">Advocate: Hidden</span>
+              <span className="bg-green-900/30 text-green-300/50 px-3 py-1 rounded-lg">Advocate: +{lastPassedBill.activistScore} (Cat ???)</span>
             )}
             {currentPlayer?.role === 'lobbyist' ? (
-              <span className="bg-red-900/50 text-red-300 px-3 py-1 rounded-lg">Lobbyist: +{lastPassedBill.lobbyistScore} ({getCategoryDisplay(lastPassedBill.lobbyistCategory)})</span>
+              <span className="bg-red-900/50 text-red-300 px-3 py-1 rounded-lg">Lobbyist: +{lastPassedBill.lobbyistScore} (Cat {lastPassedBill.lobbyistCategory})</span>
+            ) : roundCount < 2 ? (
+              <span className="bg-red-900/30 text-red-300/50 px-3 py-1 rounded-lg">Lobbyist: {lastPassedBill.lobbyistScore > 0 ? "+" : ""}{lastPassedBill.lobbyistScore} (Cat ???)</span>
             ) : (
               <span className="bg-gray-700 text-gray-400 px-3 py-1 rounded-lg">Lobbyist: Hidden</span>
             )}
