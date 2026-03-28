@@ -8,9 +8,6 @@ import { getUserMatchHistory } from "../../lib/supabase/profile";
 import { MatchRecord } from "../../lib/supabase/profile";
 
 export default function UserStats() {
-    /*const [wins, setWins] = useState(null)
-    const [losses, setLosses] = useState(null)
-*/
     useEffect(() => {
         getMatches();
         processMatches();
@@ -19,7 +16,7 @@ export default function UserStats() {
 
 
     const [loggedIn, setLoggedIn] = useState(false);
-    const [matches, setMatches] = useState([{} as MatchRecord]);
+    const [matches, setMatches] = useState([] as MatchRecord[]);
     const [wins, setWins] = useState(0);
     const [losses, setLosses] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -27,17 +24,19 @@ export default function UserStats() {
     // Get current user's ID
     async function getMatches() {
         const supabase = getSupabaseBrowserClient();
-        const res = await supabase.auth.getUser();
-        
-        if (res.data.user) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        /*
+        if (sessionData.session) {
             setLoggedIn(true);
         } else {
             setLoggedIn(false);
             return;
         }
-
-        const {matches, error} = await getUserMatchHistory(supabase, res.data.user.id);
-        setMatches(matches);
+*/      
+        if (sessionData.session) {
+            const {matches, error} = await getUserMatchHistory(supabase, sessionData.session.user.id);
+            setMatches(matches);
+        }
     }
 
     function processMatch(match: MatchRecord) {
@@ -50,6 +49,8 @@ export default function UserStats() {
 
     function processMatches() {
         matches.forEach(processMatch);
+        console.log("Matches:");
+        console.log(matches);
     }
     
     if (loading) {
@@ -74,18 +75,18 @@ export default function UserStats() {
             </div>
             </div>
         );
-    } else if (!loggedIn) {
+    } /*else if (!loggedIn) {
         return (
             <div className="relative min-h-screen flex flex-col overflow-hidden text-white">
 
-            {/* 🌍 BACKGROUND (same as homepage) */}
-            <div className="absolute inset-0 bg-[url('/images/worldmapbackground.png')] bg-cover bg-center opacity-15 blur-[2px]" />
+            {/* 🌍 BACKGROUND (same as homepage) }
+/*            <div className="absolute inset-0 bg-[url('/images/worldmapbackground.png')] bg-cover bg-center opacity-15 blur-[2px]" />
             <div className="absolute inset-0 animate-greenPulse bg-gradient-to-br from-green-400/50 via-green-300/20 to-transparent blur-[40px]" />
             <div className="absolute inset-0 animate-grayPulse bg-gradient-to-tr from-gray-300/30 via-transparent to-transparent blur-[40px]" />
             <div className="absolute inset-0 bg-black/40" />
 
-            {/* 🧩 CONTENT */}
-            <div className="relative z-10 flex flex-1 items-center justify-center">
+            {/* 🧩 CONTENT }
+/*            <div className="relative z-10 flex flex-1 items-center justify-center">
 
             <div className="bg-gray-900/80 p-10 rounded-xl w-[450px] border border-gray-700 shadow-xl backdrop-blur">
 
@@ -96,7 +97,7 @@ export default function UserStats() {
             </div>
             </div>
         );
-    } else {
+    }*/ else {
         return (
             <div className="relative min-h-screen flex flex-col overflow-hidden text-white">
 
@@ -120,7 +121,7 @@ export default function UserStats() {
                 <label className="block text-lg font-semibold text-gray-300 mb-2">
                 Wins
                 </label>
-                7
+                {wins}
             </div>
 
             {/* Max Players */}
@@ -128,7 +129,7 @@ export default function UserStats() {
                 <label className="block text-lg font-semibold text-gray-300 mb-2">
                 Losses
                 </label>
-                3
+                {losses}
             </div>
             </div>
         </div>
