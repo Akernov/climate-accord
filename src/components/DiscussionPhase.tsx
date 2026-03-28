@@ -100,31 +100,39 @@ const DiscussionPhase: React.FC<Props> = ({ lobby, currentPlayer }) => {
         <div className="bg-gray-800 p-4 rounded-xl border border-gray-600">
           <h3 className="text-lg font-bold text-[var(--show-orange)] mb-3 text-center uppercase tracking-wider">Upcoming Bills</h3>
           <p className="text-xs text-center text-gray-400 mb-4">Preview the bills you'll vote on next. Strategize now!</p>
-          <div className="flex justify-center flex-wrap gap-4">
+          <div className="flex justify-center flex-wrap gap-6">
             {bills.map((bill, idx) => (
-              <div key={idx} className="w-52 border border-gray-600 p-3 rounded-xl bg-gray-900">
-                <h4 className="font-bold text-center text-md mb-3 text-gray-200">{bill.title || `Bill ${idx + 1}`}</h4>
+              <div key={idx} className="w-64 p-5 rounded-2xl shadow-lg border-4 border-gray-600 bg-gray-800">
+                <h3 className="font-bold text-center text-xl mb-4 text-gray-100">{bill.title || `Bill ${idx + 1}`}</h3>
                 <div className="space-y-2">
                   {(currentPlayer?.role === 'advocate' || roundCount >= 2) ? (
-                    <div className="bg-green-900/30 border border-green-800 p-1.5 rounded-lg">
-                      <p className="text-xs text-green-300 font-bold">Activist (Cat {bill.activistCategory}): +{bill.activistScore}</p>
+                    <div className="bg-green-900/40 border border-green-800 p-2 rounded-lg">
+                      <p className="text-xs text-green-200 uppercase tracking-widest font-bold">
+                        Activist ({getCategoryDisplay(bill.activistCategory)})
+                      </p>
+                      <p className="text-green-400 font-black text-lg">+{bill.activistScore} pts</p>
                     </div>
                   ) : (
-                    <div className="bg-green-900/15 border border-green-900 p-1.5 rounded-lg">
-                      <p className="text-xs text-green-300/50 font-bold">Activist (Cat ???): +{bill.activistScore}</p>
+                    <div className="bg-green-900/20 border border-green-900 p-2 rounded-lg">
+                      <p className="text-xs text-green-200/50 uppercase tracking-widest font-bold">Activist (Cat ???)</p>
+                      <p className="text-green-400 font-black text-lg">+{bill.activistScore} pts</p>
                     </div>
                   )}
                   {currentPlayer?.role === 'lobbyist' ? (
-                    <div className="bg-red-900/30 border border-red-800 p-1.5 rounded-lg">
-                      <p className="text-xs text-red-300 font-bold">Lobbyist (Cat {bill.lobbyistCategory}): {bill.lobbyistScore > 0 ? "+" : ""}{bill.lobbyistScore}</p>
+                    <div className="bg-red-900/40 border border-red-800 p-2 rounded-lg">
+                      <p className="text-xs text-red-200 uppercase tracking-widest font-bold">
+                        Lobbyist ({getCategoryDisplay(bill.lobbyistCategory)})
+                      </p>
+                      <p className="text-red-400 font-black text-lg">{bill.lobbyistScore > 0 ? "+" : ""}{bill.lobbyistScore} pts</p>
                     </div>
                   ) : roundCount < 2 ? (
-                    <div className="bg-red-900/15 border border-red-900 p-1.5 rounded-lg">
-                      <p className="text-xs text-red-300/50 font-bold">Lobbyist (Cat ???): {bill.lobbyistScore > 0 ? "+" : ""}{bill.lobbyistScore}</p>
+                    <div className="bg-red-900/20 border border-red-900 p-2 rounded-lg">
+                      <p className="text-xs text-red-200/50 uppercase tracking-widest font-bold">Lobbyist (Cat ???)</p>
+                      <p className="text-red-400 font-black text-lg">{bill.lobbyistScore > 0 ? "+" : ""}{bill.lobbyistScore} pts</p>
                     </div>
                   ) : (
-                    <div className="bg-gray-800 border border-gray-700 p-1.5 rounded-lg">
-                      <p className="text-xs text-gray-500 font-bold uppercase">Lobbyist: Hidden</p>
+                    <div className="bg-gray-800 border border-gray-700 p-2 rounded-lg flex items-center justify-center h-[62px]">
+                      <p className="text-xs text-gray-500 uppercase font-black tracking-widest">Hidden</p>
                     </div>
                   )}
                 </div>
