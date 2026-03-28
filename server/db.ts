@@ -18,10 +18,10 @@ export class DB {
         return { game_id: data.id };
     }
 
-    async addPlayerToGame({ gameId, userId }: { gameId: string; userId: string; }) {
+    async addPlayerToGame({ gameId, userId, role }: { gameId: string; userId: string; role: 'advocate' | 'lobbyist' }) {
         const { error } = await this.supabase
             .from('game_players')
-            .insert([{ game_id: gameId, user_id: userId }]);
+            .insert([{ game_id: gameId, user_id: userId, role }]);
 
         if (error) throw new Error(error.message);
     }

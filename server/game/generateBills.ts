@@ -13,36 +13,38 @@ interface BillTemplate {
 const LOBBYIST_CATEGORY_COUNT = 5;
 
 // Pre-defined bill templates with thematic names
+// Activist scores: consistent ~2 (range 1-3), making bills look similarly attractive
+// Lobbyist scores: volatile 0-4 (weighted 2-3), creating hidden asymmetry
 const BILL_TEMPLATES: BillTemplate[] = [
   // Energy sector bills
-  { name: "⚡ Renewable Energy Mandate", activistCategory: 1, baseActivistScore: 2, baseLobbyistScore: 1, scoreVariance: 1 },
-  { name: "🏭 Coal Phase-out Initiative", activistCategory: 1, baseActivistScore: 3, baseLobbyistScore: 1, scoreVariance: 1 },
-  { name: "☢️ Nuclear Energy Expansion", activistCategory: 1, baseActivistScore: 1, baseLobbyistScore: 2, scoreVariance: 1 },
-  { name: "🔋 Battery Storage Subsidies", activistCategory: 1, baseActivistScore: 2, baseLobbyistScore: 1, scoreVariance: 1 },
+  { name: "⚡ Renewable Energy Mandate", activistCategory: 1, baseActivistScore: 2, baseLobbyistScore: 2, scoreVariance: 2 },
+  { name: "🏭 Coal Phase-out Initiative", activistCategory: 1, baseActivistScore: 2, baseLobbyistScore: 3, scoreVariance: 1 },
+  { name: "☢️ Nuclear Energy Expansion", activistCategory: 1, baseActivistScore: 2, baseLobbyistScore: 2, scoreVariance: 1 },
+  { name: "🔋 Battery Storage Subsidies", activistCategory: 1, baseActivistScore: 1, baseLobbyistScore: 3, scoreVariance: 1 },
 
   // Agriculture bills
-  { name: "🌾 Sustainable Farming Credits", activistCategory: 2, baseActivistScore: 2, baseLobbyistScore: 1, scoreVariance: 1 },
-  { name: "🐄 Methane Emission Regulations", activistCategory: 2, baseActivistScore: 3, baseLobbyistScore: 1, scoreVariance: 1 },
-  { name: "🌽 GMO Labeling Requirements", activistCategory: 2, baseActivistScore: 1, baseLobbyistScore: 2, scoreVariance: 1 },
-  { name: "🚜 Organic Farming Subsidies", activistCategory: 2, baseActivistScore: 2, baseLobbyistScore: 1, scoreVariance: 1 },
+  { name: "🌾 Sustainable Farming Credits", activistCategory: 2, baseActivistScore: 2, baseLobbyistScore: 2, scoreVariance: 2 },
+  { name: "🐄 Methane Emission Regulations", activistCategory: 2, baseActivistScore: 2, baseLobbyistScore: 3, scoreVariance: 1 },
+  { name: "🌽 GMO Labeling Requirements", activistCategory: 2, baseActivistScore: 2, baseLobbyistScore: 2, scoreVariance: 1 },
+  { name: "🚜 Organic Farming Subsidies", activistCategory: 2, baseActivistScore: 3, baseLobbyistScore: 3, scoreVariance: 1 },
 
   // Industry bills
-  { name: "🏭 Carbon Capture Mandate", activistCategory: 3, baseActivistScore: 2, baseLobbyistScore: 1, scoreVariance: 1 },
-  { name: "⚙️ Green Manufacturing Tax Credit", activistCategory: 3, baseActivistScore: 2, baseLobbyistScore: 1, scoreVariance: 1 },
-  { name: "🔧 Industrial Efficiency Standards", activistCategory: 3, baseActivistScore: 3, baseLobbyistScore: 1, scoreVariance: 1 },
-  { name: "🏗️ Emissions Cap & Trade", activistCategory: 3, baseActivistScore: 3, baseLobbyistScore: 2, scoreVariance: 1 },
+  { name: "🏭 Carbon Capture Mandate", activistCategory: 3, baseActivistScore: 2, baseLobbyistScore: 2, scoreVariance: 2 },
+  { name: "⚙️ Green Manufacturing Tax Credit", activistCategory: 3, baseActivistScore: 2, baseLobbyistScore: 3, scoreVariance: 1 },
+  { name: "🔧 Industrial Efficiency Standards", activistCategory: 3, baseActivistScore: 2, baseLobbyistScore: 2, scoreVariance: 1 },
+  { name: "🏗️ Emissions Cap & Trade", activistCategory: 3, baseActivistScore: 1, baseLobbyistScore: 3, scoreVariance: 1 },
 
   // Transportation bills
-  { name: "🚗 EV Tax Credit Expansion", activistCategory: 4, baseActivistScore: 2, baseLobbyistScore: 1, scoreVariance: 1 },
-  { name: "🚌 Public Transit Funding", activistCategory: 4, baseActivistScore: 2, baseLobbyistScore: 1, scoreVariance: 1 },
-  { name: "✈️ Aviation Fuel Standards", activistCategory: 4, baseActivistScore: 3, baseLobbyistScore: 1, scoreVariance: 1 },
-  { name: "🚢 Shipping Emission Regulations", activistCategory: 4, baseActivistScore: 3, baseLobbyistScore: 2, scoreVariance: 1 },
+  { name: "🚗 EV Tax Credit Expansion", activistCategory: 4, baseActivistScore: 2, baseLobbyistScore: 2, scoreVariance: 2 },
+  { name: "🚌 Public Transit Funding", activistCategory: 4, baseActivistScore: 2, baseLobbyistScore: 3, scoreVariance: 1 },
+  { name: "✈️ Aviation Fuel Standards", activistCategory: 4, baseActivistScore: 2, baseLobbyistScore: 2, scoreVariance: 1 },
+  { name: "🚢 Shipping Emission Regulations", activistCategory: 4, baseActivistScore: 3, baseLobbyistScore: 3, scoreVariance: 1 },
 
   // Forestry bills
-  { name: "🌲 Reforestation Initiative", activistCategory: 5, baseActivistScore: 2, baseLobbyistScore: 1, scoreVariance: 1 },
-  { name: "🪵 Sustainable Logging Practices", activistCategory: 5, baseActivistScore: 2, baseLobbyistScore: 1, scoreVariance: 1 },
-  { name: "🏞️ National Park Expansion", activistCategory: 5, baseActivistScore: 3, baseLobbyistScore: 1, scoreVariance: 1 },
-  { name: "🌳 Urban Forestry Program", activistCategory: 5, baseActivistScore: 1, baseLobbyistScore: 2, scoreVariance: 1 },
+  { name: "🌲 Reforestation Initiative", activistCategory: 5, baseActivistScore: 2, baseLobbyistScore: 2, scoreVariance: 2 },
+  { name: "🪵 Sustainable Logging Practices", activistCategory: 5, baseActivistScore: 2, baseLobbyistScore: 3, scoreVariance: 1 },
+  { name: "🏞️ National Park Expansion", activistCategory: 5, baseActivistScore: 2, baseLobbyistScore: 2, scoreVariance: 1 },
+  { name: "🌳 Urban Forestry Program", activistCategory: 5, baseActivistScore: 1, baseLobbyistScore: 3, scoreVariance: 1 },
 ];
 
 // Helper function to get a random integer between min and max (inclusive)
@@ -67,7 +69,7 @@ const getRandomSlice = <T>(array: T[], count: number): T[] => {
 
 // Generate a random score based on base value with variance
 const generateScore = (baseScore: number, variance: number): number => {
-  const min = Math.max(1, baseScore - variance);
+  const min = Math.max(0, baseScore - variance);
   const max = baseScore + variance;
   return getRandomInt(min, max);
 };
