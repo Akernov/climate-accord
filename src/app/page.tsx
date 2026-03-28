@@ -128,12 +128,14 @@ export default function Home() {
               JOIN GAME
             </Link>
 
-            <Link
-              href="/profile"
-              className="bg-gray-800 text-white text-xl font-bold py-5 px-8 rounded-lg border-4 border-black shadow-lg hover:scale-105 hover:bg-gray-900 transition-all text-center"
-            >
-              MY STATS
-            </Link>
+            {isLoggedIn && (
+              <Link
+                href="/stats"
+                className="bg-gray-800 text-white text-xl font-bold py-5 px-8 rounded-lg border-4 border-black shadow-lg hover:scale-105 hover:bg-gray-900 transition-all text-center"
+              >
+                MATCH ANALYTICS
+              </Link>
+            )}
 
             {isLoggedIn && (
               <button
