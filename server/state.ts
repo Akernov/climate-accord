@@ -22,6 +22,8 @@ export interface IServerState {
     // --- Timer Encapsulation ---
     setPhaseTimer(gameCode: string, timeout: NodeJS.Timeout): void;
     clearPhaseTimer(gameCode: string): void;
+    setCleanupTimer(gameCode: string, timeout: NodeJS.Timeout): void;
+    clearCleanupTimer(gameCode: string): void;
 }
 
 export class ServerState implements IServerState {
@@ -47,11 +49,16 @@ export class ServerState implements IServerState {
     // Value: Active NodeJS Timeout orchestrating the next phase jump
     private phaseTimers: Map<string, NodeJS.Timeout>;
 
+    // Key: Game Code
+    // Value: Active NodeJS Timeout orchestrating the empty lobby cleanup
+    private cleanupTimers: Map<string, NodeJS.Timeout>;
+
     constructor() {
         this.activeGames = new Map();
         this.playerLobbies = new Map();
         this.userSockets = new Map();
         this.phaseTimers = new Map();
+        this.cleanupTimers = new Map();
     }
 
     // --- Socket Presence ---
@@ -126,6 +133,19 @@ export class ServerState implements IServerState {
         if (existing) {
             clearTimeout(existing);
             this.phaseTimers.delete(gameCode);
+        }
+    }
+
+    public setCleanupTimer(gameCode: string, timeout: NodeJS.Timeout): void {
+        this.clearCleanupTimer(gameCode);
+        this.cleanupTimers.set(gameCode, timeout);
+    }
+
+    public clearCleanupTimer(gameCode: string): void {
+        const existing = this.cleanupTimers.get(gameCode);
+        if (existing) {
+            clearTimeout(existing);
+            this.cleanupTimers.delete(gameCode);
         }
     }
 }
