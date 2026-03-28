@@ -26,8 +26,6 @@ export async function transitionToNextPhase({ io, state, code, db }: { io: Serve
     let lobbyistPoints = { ...(game.lobbyistPoints || { 1:0, 2:0, 3:0, 4:0, 5:0 }) };
     let oustedSet = new Set(game.oustedPlayers || []);
 
-    const isBlindRound = game.roundCount < 2;
-
     if (currentPhase === 'Grace Period') {
         // Grace Period always flows into Bill Voting
         newPhase = 'Bill Voting';
@@ -39,12 +37,16 @@ export async function transitionToNextPhase({ io, state, code, db }: { io: Serve
         }
         handleBillVotingResults(game, updates, activistPoints, lobbyistPoints);
 
-        if (isBlindRound) {
+        // Use post-increment roundCount to decide routing (avoids off-by-one after last blind round)
+        const nextRoundCount = updates.roundCount ?? game.roundCount;
+        const stillBlind = nextRoundCount < 2;
+
+        if (stillBlind) {
             // During blind rounds: Bill Voting → Grace Period (skip Discussion & Player Voting)
             updates.removedBillIndex = null;
             newPhase = 'Grace Period';
         } else {
-            // Normal rounds: Bill Voting → Discussion
+            // Normal rounds (or first round after blind): Bill Voting → Discussion
             updates.removedBillIndex = null;
             newPhase = 'Discussion';
         }
