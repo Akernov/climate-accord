@@ -27,11 +27,8 @@ export const censorLobbyForPlayer = (lobby: Lobby, player: Player): Lobby => {
         if (currentPhase === 'Grace Period') {
             // Grace Period is a transition screen — no one needs bill data
             lobbyCopy.bills = [];
-        } else if (currentPhase === 'Discussion' && playerRole === 'advocate') {
-            // Advocates see no bills during discussion
-            lobbyCopy.bills = [];
-        } else if (currentPhase === 'Bill Voting' && playerRole === 'advocate') {
-            // Advocates see only the activist part of bills during voting
+        } else if ((currentPhase === 'Discussion' || currentPhase === 'Bill Voting') && playerRole === 'advocate') {
+            // Advocates see only the activist part of bills during discussion and voting
             lobbyCopy.bills = lobbyCopy.bills.map(bill => ({
                 title: bill.title,
                 activistCategory: bill.activistCategory,

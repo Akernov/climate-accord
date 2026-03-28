@@ -36,7 +36,7 @@ export function startGame({ io, socket, db, state: manager }: { io: Server, sock
         const { game_id } = await db.createGame();
         for (const player of assignedRolesPlayers) {
             if (!player.isAnonymous) {
-                await db.addPlayerToGame({ gameId: game_id, userId: player.userId });
+                await db.addPlayerToGame({ gameId: game_id, userId: player.userId, role: player.role });
             }
         }
 

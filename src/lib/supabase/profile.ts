@@ -71,12 +71,17 @@ export async function getUserMatchHistory(
     return { matches: [], error: error.message };
   }
 
-  const matches: MatchRecord[] = data.map((row: any) => ({
-    game_id: row.game_id,
-    role: row.role as "advocate" | "lobbyist",
-    winner_faction: row.games?.winner_faction as "advocate" | "lobbyist",
-    created_at: row.created_at,
-  }));
+  // Handle potential variations in how Supabase returns joined data (array vs object) 
+  const matches: MatchRecord[] = (data || []).map((row: any) => {
+    const gameData = Array.isArray(row.games) ? row.games[0] : row.games;
+    
+    return {
+      game_id: row.game_id,
+      role: (row.role ?? "advocate") as "advocate" | "lobbyist",
+      winner_faction: (gameData?.winner_faction ?? "advocate") as "advocate" | "lobbyist",
+      created_at: row.created_at,
+    };
+  });
 
   return { matches, error: null };
 }
