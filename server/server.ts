@@ -142,21 +142,22 @@ export async function createApp(httpServer: http.Server, config: AppConfig) {
         socket.on('disconnect', () => {
             console.log('User disconnected:', socket.id);
             if (user) {
-                state.untrackSocket(user.id);
+                state.untrackSocket(user.id, socket.id);
                 const activeCode = state.getPlayerLobby(user.id);
                 if (activeCode) {
+                    // Wait 60 seconds before checking if the lobby is truly abandoned
+                    // This accounts for backgrounded tabs (alt-tabbing) and network blips
                     setTimeout(() => {
                         const lobby = state.getGame(activeCode);
                         if (lobby) {
-                            // Specifically, in the lobby assigned to the code, for each player in that lobby, check if they are still connected
                             const hasActivePlayers = lobby.players.some(p => state.isUserConnected(p.userId));
                             if (!hasActivePlayers) {
-                                console.log(`Lobby ${activeCode} has been empty for 5s. Closing game to save memory.`);
+                                console.log(`Lobby ${activeCode} has been empty for 60s. Closing game to save memory.`);
                                 lobby.players.forEach(p => state.removePlayerFromLobby(p.userId));
                                 state.endGame(activeCode);
                             }
                         }
-                    }, 5000);
+                    }, 60000); // 60s grace period
                 }
             }
         });

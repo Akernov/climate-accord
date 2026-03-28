@@ -3,7 +3,7 @@ import { Lobby } from "../src/types/game";
 export interface IServerState {
     // --- Socket Presence ---
     trackSocket(userId: string, socketId: string): void;
-    untrackSocket(userId: string): void;
+    untrackSocket(userId: string, socketId: string): void;
     isUserConnected(userId: string): boolean;
     getSocketId(userId: string): string | undefined;
 
@@ -59,8 +59,11 @@ export class ServerState implements IServerState {
         this.userSockets.set(userId, socketId);
     }
 
-    public untrackSocket(userId: string): void {
-        this.userSockets.delete(userId);
+    public untrackSocket(userId: string, socketId: string): void {
+        const current = this.userSockets.get(userId);
+        if (current === socketId) {
+            this.userSockets.delete(userId);
+        }
     }
 
     public isUserConnected(userId: string): boolean {
