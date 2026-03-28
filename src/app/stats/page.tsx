@@ -14,21 +14,42 @@ export default function UserStats() {
 
   useEffect(() => {
     async function loadStats() {
+      console.log("[StatsPage] Attempting to load stats...");
       const supabase = getSupabaseBrowserClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      if (userError) {
+        console.error("[StatsPage] Authentication check failed:", userError.message);
+        setLoading(false);
+        setError("Session expired. Please log in again.");
+        return;
+      }
 
       if (!user) {
+        console.warn("[StatsPage] No active user session found.");
         router.push("/login");
         return;
       }
 
-      const { matches: history, error: fetchError } = await getUserMatchHistory(supabase, user.id);
-      if (fetchError) {
-        setError(fetchError);
-      } else {
-        setMatches(history);
+      console.log("[StatsPage] User validated:", user.id);
+
+      try {
+        const { matches: history, error: fetchError } = await getUserMatchHistory(supabase, user.id);
+        
+        if (fetchError) {
+          console.error("[StatsPage] Match history fetch failed:", fetchError);
+          setError(fetchError);
+        } else {
+          console.log("[StatsPage] Loaded match records:", history.length);
+          setMatches(history);
+        }
+      } catch (err: any) {
+        console.error("[StatsPage] Unexpected execution error:", err);
+        setError("Failed to synchronize with database.");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     loadStats();
   }, [router]);
@@ -45,82 +66,112 @@ export default function UserStats() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-2xl font-black text-gray-500 animate-pulse uppercase tracking-widest">Loading Stats...</div>
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center font-sans tracking-tighter">
+        <div className="w-16 h-1 w-64 bg-gray-900 rounded-full overflow-hidden mb-4">
+           <div className="h-full bg-green-500 animate-progress origin-left" />
+        </div>
+        <div className="text-sm font-black text-gray-600 uppercase tracking-widest animate-pulse">Retrieving Combat Logs...</div>
+        <style>{`
+          @keyframes progress {
+            0% { transform: scaleX(0); }
+            50% { transform: scaleX(0.5); }
+            100% { transform: scaleX(1); }
+          }
+          .animate-progress { animation: progress 2s ease-in-out infinite; }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
+        <div className="bg-red-500/10 border-2 border-red-500/20 p-10 rounded-[3rem] max-w-md shadow-2xl shadow-red-900/20">
+          <div className="text-6xl mb-6">📡</div>
+          <h2 className="text-3xl font-black text-red-500 uppercase tracking-tighter mb-4">Sync Error</h2>
+          <p className="text-gray-400 font-medium mb-8 leading-relaxed">{error}</p>
+          <Link href="/" className="px-10 py-4 bg-red-600 hover:bg-red-500 text-black font-black uppercase tracking-widest rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-xl shadow-red-950/40">
+            Return Home
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden text-white font-sans">
-      {/* BACKGROUND */}
-      <div className="absolute inset-0 bg-[url('/images/worldmapbackground.png')] bg-cover bg-center opacity-10 grayscale" />
-      <div className="absolute inset-0 bg-gradient-to-b from-gray-950 via-gray-900 to-black opacity-90" />
+    <div className="relative min-h-screen flex flex-col overflow-hidden text-white font-sans bg-black">
+      {/* CINEMATIC BACKGROUND */}
+      <div className="absolute inset-0 bg-[url('/images/worldmapbackground.png')] bg-cover bg-center opacity-[0.05] grayscale brightness-50" />
+      <div className="absolute inset-0 bg-gradient-to-tr from-black via-transparent to-green-900/10" />
       
-      <div className="relative z-10 flex flex-1 flex-col items-center py-12 px-4 gap-8">
+      <div className="relative z-10 flex flex-1 flex-col items-center py-16 px-6 gap-12 max-w-7xl mx-auto w-full">
         
-        {/* HEADER */}
-        <div className="text-center">
-          <h1 className="text-5xl font-black text-white uppercase tracking-tighter drop-shadow-2xl">
-            Player <span className="text-green-500">Analytics</span>
+        {/* DESIGNER HEADER */}
+        <div className="flex flex-col items-center gap-2">
+          <div className="bg-green-500/10 text-green-500 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.3em] border border-green-500/20">System Records Active</div>
+          <h1 className="text-6xl font-black text-white uppercase tracking-tighter text-center">
+            Match <span className="text-green-500 drop-shadow-[0_0_15px_rgba(34,197,94,0.4)]">Analytics</span>
           </h1>
-          <p className="text-gray-400 font-bold uppercase tracking-widest text-sm mt-2 opacity-60">Climate Accord Personal History</p>
+          <p className="text-gray-500 font-bold uppercase tracking-widest text-[10px] opacity-40">Personal Performance Audits • Climate Accord v1.0</p>
         </div>
 
-        {/* SUMMARY CARDS */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-5xl">
-          <StatCard label="Total Games" value={total} color="text-blue-400" />
-          <StatCard label="Wins" value={stats.wins} color="text-green-400" />
-          <StatCard label="Losses" value={stats.losses} color="text-red-400" />
-          <StatCard label="Win Rate" value={`${winRate}%`} color="text-yellow-400" />
+        {/* METRIC GRID */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 w-full">
+          <MetricCard label="Total Deployments" value={total} color="text-gray-300" />
+          <MetricCard label="Victories" value={stats.wins} color="text-green-400" />
+          <MetricCard label="Defeats" value={stats.losses} color="text-red-400" />
+          <MetricCard label="Success Rate" value={`${winRate}%`} color="text-yellow-400" />
         </div>
 
-        {/* MATCH HISTORY LIST */}
-        <div className="w-full max-w-5xl bg-gray-900/60 border-2 border-gray-800 rounded-3xl overflow-hidden backdrop-blur-xl shadow-2xl flex flex-col">
-          <div className="bg-gray-800/80 p-6 border-b border-gray-700 flex justify-between items-center">
-            <h2 className="text-xl font-black uppercase tracking-widest text-gray-300">Match Log</h2>
+        {/* LOG SECTION */}
+        <div className="w-full bg-gray-950/40 border-2 border-white/5 rounded-[2.5rem] overflow-hidden backdrop-blur-3xl shadow-2xl flex flex-col">
+          <div className="p-8 border-b border-white/5 flex justify-between items-center bg-white/5">
+            <div className="flex items-center gap-3">
+               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+               <h2 className="text-sm font-black uppercase tracking-[0.2em] text-gray-400">Combat Chronology</h2>
+            </div>
             <Link 
               href="/"
-              className="px-6 py-2 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+              className="px-8 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:border-white/20 active:scale-95"
             >
-              Back Home
+              Close Records
             </Link>
           </div>
 
-          <div className="overflow-y-auto max-h-[500px] scrollbar-hide">
+          <div className="overflow-x-auto min-h-[400px]">
             {matches.length > 0 ? (
-              <table className="w-full text-left border-collapse">
-                <thead className="sticky top-0 bg-gray-800 text-gray-500 text-[10px] uppercase font-black tracking-widest border-b border-gray-700">
-                  <tr>
-                    <th className="px-8 py-4">Date</th>
-                    <th className="px-8 py-4">Factions</th>
-                    <th className="px-8 py-4 text-center">Outcome</th>
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-white/[0.02] text-gray-600 text-[9px] uppercase font-black tracking-[0.25em]">
+                    <th className="px-10 py-6">Timestamp</th>
+                    <th className="px-10 py-6">Strategic Role</th>
+                    <th className="px-10 py-6 text-center">Final Result</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-800">
+                <tbody className="divide-y divide-white/[0.03]">
                   {matches.map((match) => {
                     const isWin = match.role === match.winner_faction;
                     const date = new Date(match.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
                     
                     return (
-                      <tr key={match.game_id} className="hover:bg-white/5 transition-colors group">
-                        <td className="px-8 py-6">
-                           <div className="font-bold text-gray-400 text-sm">{date}</div>
-                           <div className="text-[10px] text-gray-600 font-black uppercase tracking-tighter">{match.game_id.slice(0,8)}</div>
+                      <tr key={match.game_id} className="hover:bg-white/[0.02] transition-colors group">
+                        <td className="px-10 py-6">
+                           <div className="font-bold text-gray-300 text-sm group-hover:text-white transition-colors">{date}</div>
+                           <div className="text-[9px] text-gray-700 font-mono uppercase tracking-tighter mt-1">{match.game_id.slice(0,13)}...</div>
                         </td>
-                        <td className="px-8 py-6">
+                        <td className="px-10 py-6">
                            <div className="flex items-center gap-4">
-                              <span className={`px-3 py-1 rounded-lg font-black text-[10px] uppercase border ${match.role === 'advocate' ? 'bg-green-900/20 text-green-400 border-green-800' : 'bg-red-900/20 text-red-400 border-red-800'}`}>
+                              <span className={`px-4 py-1.5 rounded-full font-black text-[9px] uppercase border tracking-widest ${match.role === 'advocate' ? 'bg-green-500/5 text-green-500 border-green-500/20' : 'bg-red-500/5 text-red-500 border-red-500/20'}`}>
                                 {match.role}
                               </span>
-                              <span className="text-gray-600 text-[10px] font-black uppercase opacity-50">vs</span>
-                              <span className="text-gray-400 font-bold text-sm">Industrialists</span>
+                              <span className="text-gray-700 text-[9px] font-black uppercase tracking-widest">vs</span>
+                              <span className="text-gray-500 font-black text-[10px] uppercase opacity-60">Status Quo</span>
                            </div>
                         </td>
-                        <td className="px-8 py-6 text-center">
-                           <span className={`px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg ${isWin ? 'bg-green-500 text-black shadow-green-900/40' : 'bg-red-500/20 text-red-500 border border-red-900/50 shadow-none opacity-80'}`}>
+                        <td className="px-10 py-6 text-center">
+                           <div className={`inline-flex items-center px-6 py-2 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg transition-all ${isWin ? 'bg-green-500 text-black shadow-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20 shadow-none grayscale group-hover:grayscale-0'}`}>
                               {isWin ? 'Victory' : 'Defeat'}
-                           </span>
+                           </div>
                         </td>
                       </tr>
                     );
@@ -128,11 +179,11 @@ export default function UserStats() {
                 </tbody>
               </table>
             ) : (
-              <div className="flex flex-col items-center justify-center py-20 gap-4">
-                <div className="text-4xl">🌵</div>
-                <div className="text-gray-500 font-black uppercase tracking-widest text-center">
-                   No battle history found.<br/>
-                   <span className="text-xs text-gray-700">Go play a game to see your stats!</span>
+              <div className="flex flex-col items-center justify-center py-32 gap-6">
+                <div className="w-20 h-20 bg-gray-900 rounded-[2rem] flex items-center justify-center text-3xl opacity-20 border border-white/5">📂</div>
+                <div className="flex flex-col items-center gap-2">
+                   <div className="text-gray-600 font-black uppercase tracking-[0.3em] text-[11px]">No Recorded Sessions</div>
+                   <div className="text-[9px] text-gray-700 uppercase tracking-widest italic tracking-wider opacity-60">Complete a game to synchronize your history</div>
                 </div>
               </div>
             )}
@@ -143,11 +194,11 @@ export default function UserStats() {
   );
 }
 
-function StatCard({ label, value, color }: { label: string, value: string | number, color: string }) {
+function MetricCard({ label, value, color }: { label: string, value: string | number, color: string }) {
   return (
-    <div className="bg-gray-900/40 border border-gray-800 p-6 rounded-3xl flex flex-col items-center gap-2 hover:border-gray-700 transition-all">
-      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">{label}</span>
-      <span className={`text-3xl font-black ${color}`}>{value}</span>
+    <div className="bg-gray-950/40 border-2 border-white/5 p-8 rounded-[2.5rem] flex flex-col items-center gap-3 backdrop-blur-xl hover:border-white/10 transition-all hover:translate-y-[-4px] shadow-2xl">
+      <span className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-600">{label}</span>
+      <span className={`text-5xl font-black tracking-tighter ${color}`}>{value}</span>
     </div>
   );
-}
+}

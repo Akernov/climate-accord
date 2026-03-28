@@ -55,33 +55,41 @@ export async function getUserMatchHistory(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<{ matches: MatchRecord[]; error: string | null }> {
+  console.log("[getUserMatchHistory] Starting fetch for userId:", userId);
   const { data, error } = await supabase
     .from("game_players")
     .select(`
       game_id, 
       role, 
       created_at,
-      games!inner(winner_faction)`)
+      games:games!game_players_game_id_fkey(winner_faction)`)
     .eq("user_id", userId)
-    .not("games.winner_faction", "is", null)
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("[getUserMatchHistory] Failed:", error);
+    console.error("[getUserMatchHistory] Query error:", error);
     return { matches: [], error: error.message };
   }
 
-  // Handle potential variations in how Supabase returns joined data (array vs object) 
-  const matches: MatchRecord[] = (data || []).map((row: any) => {
-    const gameData = Array.isArray(row.games) ? row.games[0] : row.games;
-    
-    return {
-      game_id: row.game_id,
-      role: (row.role ?? "advocate") as "advocate" | "lobbyist",
-      winner_faction: (gameData?.winner_faction ?? "advocate") as "advocate" | "lobbyist",
-      created_at: row.created_at,
-    };
-  });
+  // Diagnostic Log to see exact structure from Supabase
+  console.log("[getUserMatchHistory] Raw JSON from Supabase:", JSON.stringify(data, null, 2));
 
+  const matches: MatchRecord[] = (data || [])
+    .filter((row: any) => {
+      const g = Array.isArray(row.games) ? row.games[0] : row.games;
+      // Filter for finished games that have a winner
+      return g && g.winner_faction !== null;
+    })
+    .map((row: any) => {
+      const g = Array.isArray(row.games) ? row.games[0] : row.games;
+      return {
+        game_id: row.game_id,
+        role: (row.role ?? "advocate") as "advocate" | "lobbyist",
+        winner_faction: g.winner_faction as "advocate" | "lobbyist",
+        created_at: row.created_at,
+      };
+    });
+
+  console.log("[getUserMatchHistory] Successfully mapped matches:", matches.length);
   return { matches, error: null };
 }
