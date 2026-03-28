@@ -106,28 +106,48 @@ export function evaluateWinConditions(game: Lobby, updates: Partial<Lobby>, acti
 
     // Only check powerups if the game hasn't ended
     if (updates.status !== 'ended') {
-        const powerups = checkOvershootPowerups(totalAct, totalLob);
-        if (powerups.length > 0) {
-            updates.activePowerups = powerups;
-            updates.billRemovalVotes = {};
-            updates.removedBillIndex = null;
+        const oldAct: Record<number, number> = {};
+        const oldLob: Record<number, number> = {};
+        const prevAct = game.activistPoints || { 1:0, 2:0, 3:0, 4:0, 5:0 };
+        const prevHidAct = game.hiddenActivistPoints || { 1:0, 2:0, 3:0, 4:0, 5:0 };
+        const prevLob = game.lobbyistPoints || { 1:0, 2:0, 3:0, 4:0, 5:0 };
+        const prevHidLob = game.hiddenLobbyistPoints || { 1:0, 2:0, 3:0, 4:0, 5:0 };
+
+        for (const cat of [1, 2, 3, 4, 5]) {
+            oldAct[cat] = (prevAct[cat] || 0) + (prevHidAct[cat] || 0);
+            oldLob[cat] = (prevLob[cat] || 0) + (prevHidLob[cat] || 0);
+        }
+
+        const newPowerups = checkOvershootPowerups(totalAct, totalLob, oldAct, oldLob);
+        if (newPowerups.length > 0) {
+            // Keep existing ones from the current transition (if any) and add new triggers
+            const currentSet = new Set(updates.activePowerups || game.activePowerups || []);
+            newPowerups.forEach(p => currentSet.add(p));
+            updates.activePowerups = Array.from(currentSet) as ('activist_vision' | 'lobbyist_remove')[];
+            
+            // Reset removal votes if a new removal powerup was triggered
+            if (newPowerups.includes('lobbyist_remove')) {
+                updates.billRemovalVotes = {};
+                updates.removedBillIndex = null;
+            }
         }
     }
 }
 
 export function checkOvershootPowerups(
-    totalAct: Record<number, number>,
-    totalLob: Record<number, number>
+    newAct: Record<number, number>,
+    newLob: Record<number, number>,
+    oldAct: Record<number, number>,
+    oldLob: Record<number, number>
 ): ('activist_vision' | 'lobbyist_remove')[] {
     const powerups: ('activist_vision' | 'lobbyist_remove')[] = [];
 
-    // Activist overshoot (any cat >= 6) → lobbyists get bill removal
-    const activistOvershoot = [1, 2, 3, 4, 5].some(cat => totalAct[cat] >= 6);
-    // Lobbyist overshoot (any cat >= 8) → activists get full bill vision
-    const lobbyistOvershoot = [1, 2, 3, 4, 5].some(cat => totalLob[cat] >= 8);
+    // Trigger only if previously below threshold and now above
+    const activistOvershot = [1, 2, 3, 4, 5].some(cat => (newAct[cat] || 0) >= 6 && (oldAct[cat] || 0) < 6);
+    const lobbyistOvershot = [1, 2, 3, 4, 5].some(cat => (newLob[cat] || 0) >= 8 && (oldLob[cat] || 0) < 8);
 
-    if (lobbyistOvershoot) powerups.push('activist_vision');
-    if (activistOvershoot) powerups.push('lobbyist_remove');
+    if (lobbyistOvershot) powerups.push('activist_vision');
+    if (activistOvershot) powerups.push('lobbyist_remove');
 
     return powerups;
 }
