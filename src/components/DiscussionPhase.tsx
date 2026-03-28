@@ -118,7 +118,7 @@ const DiscussionPhase: React.FC<Props> = ({ lobby, currentPlayer }) => {
                       <p className="text-green-400 font-black text-lg">+{bill.activistScore} pts</p>
                     </div>
                   )}
-                  {currentPlayer?.role === 'lobbyist' ? (
+                  {(currentPlayer?.role === 'lobbyist' || (activePowerups || []).includes('activist_vision')) ? (
                     <div className="bg-red-900/40 border border-red-800 p-2 rounded-lg">
                       <p className="text-xs text-red-200 uppercase tracking-widest font-bold">
                         Lobbyist ({getCategoryDisplay(bill.lobbyistCategory)})
@@ -155,7 +155,7 @@ const DiscussionPhase: React.FC<Props> = ({ lobby, currentPlayer }) => {
               <span className="bg-green-900/30 text-green-300/50 px-3 py-1 rounded-lg">Advocate: +{lastPassedBill.activistScore} (Cat ???)</span>
             )}
             {currentPlayer?.role === 'lobbyist' ? (
-              <span className="bg-red-900/50 text-red-300 px-3 py-1 rounded-lg">Lobbyist: +{lastPassedBill.lobbyistScore} (Cat {lastPassedBill.lobbyistCategory})</span>
+              <span className="bg-red-900/50 text-red-300 px-3 py-1 rounded-lg">Lobbyist: +{lastPassedBill.lobbyistScore} ({getCategoryDisplay(lastPassedBill.lobbyistCategory)})</span>
             ) : roundCount < 2 ? (
               <span className="bg-red-900/30 text-red-300/50 px-3 py-1 rounded-lg">Lobbyist: {lastPassedBill.lobbyistScore > 0 ? "+" : ""}{lastPassedBill.lobbyistScore} (Cat ???)</span>
             ) : (

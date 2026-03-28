@@ -28,12 +28,15 @@ export const censorLobbyForPlayer = (lobby: Lobby, player: Player): Lobby => {
             // Grace Period is a transition screen — no one needs bill data
             lobbyCopy.bills = [];
         } else if ((currentPhase === 'Discussion' || currentPhase === 'Bill Voting') && playerRole === 'advocate') {
-            // Advocates see only the activist part of bills during discussion and voting
-            lobbyCopy.bills = lobbyCopy.bills.map(bill => ({
-                title: bill.title,
-                activistCategory: bill.activistCategory,
-                activistScore: bill.activistScore,
-            } as Bill)); // Cast to Bill, acknowledging missing optional fields
+            const hasActivistVision = lobbyCopy.activePowerups?.includes('activist_vision');
+            if (!hasActivistVision) {
+                // Advocates see only the activist part of bills if the powerup is NOT active
+                lobbyCopy.bills = lobbyCopy.bills.map(bill => ({
+                    title: bill.title,
+                    activistCategory: bill.activistCategory,
+                    activistScore: bill.activistScore,
+                } as Bill)); // Cast to Bill, acknowledging missing fields are omitted safely here for transit
+            }
         }
     }
 
