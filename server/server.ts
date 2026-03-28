@@ -117,6 +117,7 @@ export async function createApp(httpServer: http.Server, config: AppConfig) {
             if (activeCode) {
                 console.log(`Reconnecting user ${user.id} to lobby ${activeCode}`);
                 socket.join(activeCode);
+                state.clearCleanupTimer(activeCode); // Stop any pending abandonment timer
             }
         }
 
@@ -142,21 +143,31 @@ export async function createApp(httpServer: http.Server, config: AppConfig) {
         socket.on('disconnect', () => {
             console.log('User disconnected:', socket.id);
             if (user) {
-                state.untrackSocket(user.id);
+                state.untrackSocket(user.id, socket.id);
                 const activeCode = state.getPlayerLobby(user.id);
+
                 if (activeCode) {
-                    setTimeout(() => {
-                        const lobby = state.getGame(activeCode);
-                        if (lobby) {
-                            // Specifically, in the lobby assigned to the code, for each player in that lobby, check if they are still connected
-                            const hasActivePlayers = lobby.players.some(p => state.isUserConnected(p.userId));
-                            if (!hasActivePlayers) {
-                                console.log(`Lobby ${activeCode} has been empty for 5s. Closing game to save memory.`);
-                                lobby.players.forEach(p => state.removePlayerFromLobby(p.userId));
-                                state.endGame(activeCode);
-                            }
+                    const lobby = state.getGame(activeCode);
+                    if (lobby) {
+                        const hasActivePlayers = lobby.players.some(p => state.isUserConnected(p.userId));
+
+                        if (!hasActivePlayers) {
+                            console.log(`Lobby ${activeCode} is now empty. Starting 60s cleanup timer.`);
+                            const timer = setTimeout(() => {
+                                const finalCheckLobby = state.getGame(activeCode);
+                                if (finalCheckLobby) {
+                                    const stillConnected = finalCheckLobby.players.some(p => state.isUserConnected(p.userId));
+                                    if (!stillConnected) {
+                                        console.log(`Lobby ${activeCode} has been empty for 60s. Closing game to save memory.`);
+                                        finalCheckLobby.players.forEach(p => state.removePlayerFromLobby(p.userId));
+                                        state.endGame(activeCode);
+                                        io.to(activeCode).emit('lobby:updated', { status: 'ended' });
+                                    }
+                                }
+                            }, 60000);
+                            state.setCleanupTimer(activeCode, timer);
                         }
-                    }, 5000);
+                    }
                 }
             }
         });

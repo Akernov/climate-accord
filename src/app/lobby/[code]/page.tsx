@@ -74,8 +74,18 @@ export default function LobbyPage() {
         { code },
         (res: { status: "SUCCESS" | "ERROR"; error?: string; data?: Lobby }) => {
           if (res.status === "ERROR") {
-            console.error(res.error);
-            router.push("/");
+            console.error("Lobby state error:", res.error);
+            // Give the server a moment to recover from a transient reconnect state
+            const retryTimer = setTimeout(() => {
+              socket.emit("lobby:get_state", { code }, (retryRes: { status: "SUCCESS" | "ERROR"; error?: string; data?: Lobby }) => {
+                if (retryRes.status === "ERROR") {
+                  router.push("/");
+                } else if (retryRes.data) {
+                  setLobby(retryRes.data);
+                }
+              });
+            }, 2000);
+            return () => clearTimeout(retryTimer);
           } else if (res.data) {
             setLobby(res.data);
           }

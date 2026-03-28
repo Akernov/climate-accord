@@ -120,8 +120,9 @@ export function evaluateWinConditions(game: Lobby, updates: Partial<Lobby>, acti
 
         const newPowerups = checkOvershootPowerups(totalAct, totalLob, oldAct, oldLob);
         if (newPowerups.length > 0) {
-            // Keep existing ones from the current transition (if any) and add new triggers
-            const currentSet = new Set(updates.activePowerups || game.activePowerups || []);
+            // Use explicit undefined check to avoid falsy [] || game.activePowerups issue
+            const existingPowerups = updates.activePowerups !== undefined ? updates.activePowerups : (game.activePowerups || []);
+            const currentSet = new Set(existingPowerups);
             newPowerups.forEach(p => currentSet.add(p));
             updates.activePowerups = Array.from(currentSet) as ('activist_vision' | 'lobbyist_remove')[];
             
@@ -142,9 +143,9 @@ export function checkOvershootPowerups(
 ): ('activist_vision' | 'lobbyist_remove')[] {
     const powerups: ('activist_vision' | 'lobbyist_remove')[] = [];
 
-    // Trigger only if previously below threshold and now above
-    const activistOvershot = [1, 2, 3, 4, 5].some(cat => (newAct[cat] || 0) >= 6 && (oldAct[cat] || 0) < 6);
-    const lobbyistOvershot = [1, 2, 3, 4, 5].some(cat => (newLob[cat] || 0) >= 8 && (oldLob[cat] || 0) < 8);
+    // ANY increase while at or above threshold triggers/refreshes the defensive powerup
+    const activistOvershot = [1, 2, 3, 4, 5].some(cat => (newAct[cat] || 0) >= 6 && (newAct[cat] > oldAct[cat]));
+    const lobbyistOvershot = [1, 2, 3, 4, 5].some(cat => (newLob[cat] || 0) >= 8 && (newLob[cat] > oldLob[cat]));
 
     if (lobbyistOvershot) powerups.push('activist_vision');
     if (activistOvershot) powerups.push('lobbyist_remove');
