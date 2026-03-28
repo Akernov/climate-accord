@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSocket } from "@/context/SocketContext";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -11,6 +11,25 @@ export default function JoinLobby() {
 
   const [playerName, setPlayerName] = useState("");
   const [lobbyCode, setLobbyCode] = useState("");
+
+  // Pre-fill player name if already logged in
+  useEffect(() => {
+    async function fetchUserDisplayName() {
+      const supabase = getSupabaseBrowserClient();
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session) {
+        const user = sessionData.session.user;
+        // Try to get display_name from metadata, fallback to email local part
+        const displayName =
+          user.user_metadata?.display_name ||
+          (user.email ? user.email.split("@")[0] : "");
+        if (displayName) {
+          setPlayerName(displayName);
+        }
+      }
+    }
+    fetchUserDisplayName();
+  }, []);
 
   async function joinLobby() {
     const normalizedName = playerName.trim();
@@ -24,6 +43,7 @@ export default function JoinLobby() {
     const supabase = getSupabaseBrowserClient();
     const { data: sessionData } = await supabase.auth.getSession();
 
+    // Create an anonymous session if none exists
     if (!sessionData.session) {
       const { error } = await supabase.auth.signInAnonymously({
         options: {
@@ -59,18 +79,15 @@ export default function JoinLobby() {
 
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden text-white">
-
-      {/* BACKGROUND  */}
+      {/* BACKGROUND */}
       <div className="absolute inset-0 bg-[url('/images/worldmapbackground.png')] bg-cover bg-center opacity-15 blur-[2px]" />
       <div className="absolute inset-0 animate-greenPulse bg-gradient-to-br from-green-400/50 via-green-300/20 to-transparent blur-[40px]" />
       <div className="absolute inset-0 animate-grayPulse bg-gradient-to-tr from-gray-300/30 via-transparent to-transparent blur-[40px]" />
       <div className="absolute inset-0 bg-black/40" />
 
-      {/*  CONTENT */}
+      {/* CONTENT */}
       <div className="relative z-10 flex flex-1 items-center justify-center">
-
         <div className="bg-gray-900/80 p-10 rounded-xl w-[450px] border border-gray-700 shadow-xl backdrop-blur">
-
           <h1 className="text-3xl font-bold text-center text-gray-300 mb-8 tracking-wide">
             JOIN LOBBY
           </h1>
@@ -110,7 +127,6 @@ export default function JoinLobby() {
           >
             JOIN GAME
           </button>
-
         </div>
       </div>
 

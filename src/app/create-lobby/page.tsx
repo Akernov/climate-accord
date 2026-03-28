@@ -1,7 +1,7 @@
 "use client";
 
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSocket } from "@/context/SocketContext";
 
@@ -10,6 +10,24 @@ export default function CreateLobby() {
   const [playerName, setPlayerName] = useState("");
   const [maxPlayers, setMaxPlayers] = useState(4);
   const { socket } = useSocket();
+
+  // Pre-fill player name if already logged in
+  useEffect(() => {
+    async function fetchUserDisplayName() {
+      const supabase = getSupabaseBrowserClient();
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session) {
+        const user = sessionData.session.user;
+        const displayName =
+          user.user_metadata?.display_name ||
+          (user.email ? user.email.split("@")[0] : "");
+        if (displayName) {
+          setPlayerName(displayName);
+        }
+      }
+    }
+    fetchUserDisplayName();
+  }, []);
 
   async function createLobby() {
     const normalizedName = playerName.trim();
@@ -22,6 +40,7 @@ export default function CreateLobby() {
     const supabase = getSupabaseBrowserClient();
     const { data: sessionData } = await supabase.auth.getSession();
 
+    // Only sign in anonymously if there's no session at all
     if (!sessionData.session) {
       const { error } = await supabase.auth.signInAnonymously({
         options: {
@@ -44,7 +63,7 @@ export default function CreateLobby() {
     if (!socket) return;
 
     const res = await socket.emitWithAck("lobby:create", {
-      playerName,
+      playerName: normalizedName,
       maxPlayers,
     });
 

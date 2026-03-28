@@ -6,9 +6,6 @@ import { LobbyPhase, Lobby } from "../../src/types/game.js";
 import { PHASE_DURATIONS } from "./phases.js";
 import { handlePlayerVotingResults, handleBillVotingResults, evaluateWinConditions } from "./resolvers.js";
 
-// Defines the order of the phases in your game loop
-const PHASE_ORDER: LobbyPhase[] = ['Discussion', 'Bill Voting', 'Player Voting'];
-
 export async function transitionToNextPhase({ io, state, code, db }: { io: Server, state: IServerState, code: string, db: DB }, isForced = false) {
     const game = state.getGame(code);
     if (!game || game.status !== 'started') {
@@ -29,7 +26,31 @@ export async function transitionToNextPhase({ io, state, code, db }: { io: Serve
     let lobbyistPoints = { ...(game.lobbyistPoints || { 1:0, 2:0, 3:0, 4:0, 5:0 }) };
     let oustedSet = new Set(game.oustedPlayers || []);
 
-    if (currentPhase === 'Discussion') {
+    if (currentPhase === 'Grace Period') {
+        // Grace Period always flows into Bill Voting
+        newPhase = 'Bill Voting';
+        updates.callPlayerVoteIds = [];
+    } else if (currentPhase === 'Bill Voting') {
+        // Clear activist vision powerup after the Bill Voting round ends
+        if ((game.activePowerups || []).includes('activist_vision')) {
+            updates.activePowerups = (game.activePowerups || []).filter(p => p !== 'activist_vision');
+        }
+        handleBillVotingResults(game, updates, activistPoints, lobbyistPoints);
+
+        // Use post-increment roundCount to decide routing (avoids off-by-one after last blind round)
+        const nextRoundCount = updates.roundCount ?? game.roundCount;
+        const stillBlind = nextRoundCount < 2;
+
+        if (stillBlind) {
+            // During blind rounds: Bill Voting → Grace Period (skip Discussion & Player Voting)
+            updates.removedBillIndex = null;
+            newPhase = 'Grace Period';
+        } else {
+            // Normal rounds (or first round after blind): Bill Voting → Discussion
+            updates.removedBillIndex = null;
+            newPhase = 'Discussion';
+        }
+    } else if (currentPhase === 'Discussion') {
         // Resolve lobbyist bill removal powerup before moving to Bill Voting
         if ((game.activePowerups || []).includes('lobbyist_remove') && game.bills && game.bills.length > 0) {
             const removalVotes = game.billRemovalVotes || {};
@@ -71,16 +92,6 @@ export async function transitionToNextPhase({ io, state, code, db }: { io: Serve
     } else if (currentPhase === 'Player Voting') {
         handlePlayerVotingResults(game, updates, oustedSet);
         newPhase = 'Grace Period';
-    } else if (currentPhase === 'Grace Period') {
-        newPhase = 'Bill Voting';
-    } else if (currentPhase === 'Bill Voting') {
-        // Clear activist vision powerup after the Bill Voting round ends
-        if ((game.activePowerups || []).includes('activist_vision')) {
-            updates.activePowerups = (game.activePowerups || []).filter(p => p !== 'activist_vision');
-        }
-        handleBillVotingResults(game, updates, activistPoints, lobbyistPoints);
-        updates.removedBillIndex = null;
-        newPhase = 'Discussion';
     }
 
     evaluateWinConditions(game, updates, activistPoints, lobbyistPoints, oustedSet);
@@ -93,7 +104,7 @@ export async function transitionToNextPhase({ io, state, code, db }: { io: Serve
     state.updateGame(code, updates);
     await broadcastLobbyState(io, code, state);
 
-    console.log(`Lobby ${code} transitioned to ${newPhase}. Win Status: ${updates.status}`);
+    console.log(`Lobby ${code} transitioned to ${newPhase} (round ${game.roundCount}). Win Status: ${updates.status}`);
 
     if (updates.status === 'ended') {
          console.log(`Lobby ${code} GAME OVER. Winner: ${updates.winnerFaction}`);

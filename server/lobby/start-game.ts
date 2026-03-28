@@ -5,7 +5,7 @@ import { IServerState } from "../state.js";
 import { withValidation, getSocketUser, normalizeCode, assignRoles, broadcastLobbyState } from "../util.js";
 import { generateBills } from "../game/generateBills.js";
 import { transitionToNextPhase } from "../game/next-phase.js";
-import { PHASE_DURATIONS } from "../game/phases.js";
+import { INITIAL_GRACE_PERIOD_DURATION } from "../game/phases.js";
 
 export const startGameSchema = z.object({
     code: z.string(),
@@ -40,13 +40,14 @@ export function startGame({ io, socket, db, state: manager }: { io: Server, sock
             }
         }
 
+        // Start with Grace Period to give players time to connect before blind voting
         manager.updateGame(code, {
             gameId: game_id,
             status: 'started',
-            phase: 'Discussion',
+            phase: 'Grace Period',
             players: assignedRolesPlayers,
             bills: bills,
-            phaseEndTime: Date.now() + PHASE_DURATIONS['Discussion'],
+            phaseEndTime: Date.now() + INITIAL_GRACE_PERIOD_DURATION,
             votes: {},
             activistPoints: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
             lobbyistPoints: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
@@ -66,12 +67,12 @@ export function startGame({ io, socket, db, state: manager }: { io: Server, sock
         // Broadcast the initial "game started" state
         await broadcastLobbyState(io, code, manager);
 
-        console.log(`Lobby ${code} started. First phase transition in ${PHASE_DURATIONS['Discussion']}ms.`);
+        console.log(`Lobby ${code} started. Initial Grace Period: ${INITIAL_GRACE_PERIOD_DURATION}ms before blind rounds.`);
 
         // Kick off the automatic phase transition loop
         const timeout = setTimeout(() => {
             transitionToNextPhase({ io, state: manager, code, db });
-        }, PHASE_DURATIONS['Discussion']);
+        }, INITIAL_GRACE_PERIOD_DURATION);
 
         manager.setPhaseTimer(code, timeout);
 

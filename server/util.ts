@@ -24,7 +24,10 @@ export const censorLobbyForPlayer = (lobby: Lobby, player: Player): Lobby => {
 
     // Censor bills based on phase and role
     if (lobbyCopy.bills && lobbyCopy.bills.length > 0) {
-        if (currentPhase === 'Discussion' && playerRole === 'advocate') {
+        if (currentPhase === 'Grace Period') {
+            // Grace Period is a transition screen — no one needs bill data
+            lobbyCopy.bills = [];
+        } else if (currentPhase === 'Discussion' && playerRole === 'advocate') {
             // Advocates see no bills during discussion
             lobbyCopy.bills = [];
         } else if (currentPhase === 'Bill Voting' && playerRole === 'advocate') {
