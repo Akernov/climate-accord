@@ -1,11 +1,37 @@
 "use client";
 
-import { io } from "socket.io-client";
-import { useEffect } from "react";
-import Link from 'next/link';
-import { useSocket } from "@/context/SocketContext";
+import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function Home() {
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        alert(`Failed to log out: ${error.message}`);
+        setIsLoggingOut(false);
+        return;
+      }
+
+      router.push("/login");
+      router.refresh();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      alert(`Failed to log out: ${message}`);
+      setIsLoggingOut(false);
+    }
+  }
+
   return (
     <div className="relative min-h-screen mx-auto flex flex-col bg-gray overflow-hidden">
       {/* Content Layer */}
@@ -50,6 +76,14 @@ export default function Home() {
             >
               PLAYER STATS
             </Link>
+
+            <button
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="bg-red-700 text-white text-xl font-bold py-5 px-8 rounded-lg border-4 border-red-900 shadow-lg hover:scale-105 hover:bg-red-800 transition-all text-center disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isLoggingOut ? "LOGGING OUT..." : "LOG OUT"}
+            </button>
 
           </div>
 
