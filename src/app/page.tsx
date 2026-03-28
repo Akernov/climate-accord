@@ -7,6 +7,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 export default function Home() {
   const [showInfo, setShowInfo] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null); // null = loading
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
 
   // Check authentication status on mount
@@ -48,6 +49,20 @@ export default function Home() {
         </div>
       </div>
     );
+  }
+
+  async function handleLogout() {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+
+    const { error } = await supabase.auth.signOut({ scope: "local" });
+    if (error) {
+      alert(`Failed to log out: ${error.message}`);
+      setIsLoggingOut(false);
+      return;
+    }
+
+    window.location.replace("/login");
   }
 
   return (
@@ -119,6 +134,16 @@ export default function Home() {
             >
               MY STATS
             </Link>
+
+            {isLoggedIn && (
+              <button
+                onClick={() => void handleLogout()}
+                disabled={isLoggingOut}
+                className="bg-red-700 text-white text-xl font-bold py-5 px-8 rounded-lg border-4 border-red-900 shadow-lg hover:scale-105 hover:bg-red-800 hover:shadow-[0_0_25px_rgba(239,68,68,0.6)] transition-all text-center disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isLoggingOut ? "LOGGING OUT..." : "LOG OUT"}
+              </button>
+            )}
 
             <button
               onClick={() => setShowInfo(true)}
